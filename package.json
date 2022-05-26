@@ -1,0 +1,10 @@
+{
+  "name": "hexicon-solver",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Jeremy Moseley <jeremy@moseley.dev>",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^4.7.2"
+  }
+}
