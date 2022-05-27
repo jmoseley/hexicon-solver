@@ -10,7 +10,8 @@ export function findAllWords(board: Board, dictionary: Trie) {
   for (const line of board.nodes) {
     for (const node of line) {
       debug("Starting at node", node.char, node.coords);
-      words.push(...getWords(board, node, node, "", dictionary));
+      words.push(...getWords(board, node, [], dictionary));
+      debug("after", board.countUsed());
     }
   }
 
@@ -20,38 +21,41 @@ export function findAllWords(board: Board, dictionary: Trie) {
 // Recursively find the words in the graph
 function getWords(
   board: Board,
-  startNode: BoardNode,
-  currentNode: BoardNode,
-  accumulation: string,
+  node: BoardNode,
+  accumulation: BoardNode[],
   dictionary: Trie
-): { startNode: BoardNode; word: string }[] {
-  debug(`Working on '${accumulation}'`);
-  if (accumulation.length > 10) {
-    return [];
-  }
+): BoardNode[][] {
+  accumulation.push(node);
+  node.used = true;
+
+  const accumulatedString = getStringFromNodes(accumulation);
+  debug(`Working on '${accumulatedString}'`);
   // Check if the trie contains the accumulation
-  if (!dictionary.containsPrefix(accumulation)) {
+  if (!dictionary.containsPrefix(accumulatedString)) {
+    accumulation.pop();
+    node.used = false;
     return [];
   }
 
-  const words = [] as { startNode: BoardNode; word: string }[];
+  const words = [] as BoardNode[][];
 
-  currentNode.used = true;
-  if (dictionary.contains(accumulation + currentNode.char)) {
-    words.push({ startNode, word: accumulation + currentNode.char });
+  if (dictionary.contains(accumulatedString)) {
+    debug("Found word:", accumulatedString);
+    words.push([...accumulation]);
   }
-  accumulation = accumulation + currentNode.char;
 
-  for (const neighbor of currentNode.neighbors) {
+  for (const neighbor of node.neighbors) {
     if (neighbor.used) {
       continue;
     }
-    neighbor.used = true;
-    words.push(
-      ...getWords(board.copy(), startNode, neighbor, accumulation, dictionary)
-    );
-    neighbor.used = false;
+    words.push(...getWords(board, neighbor, accumulation, dictionary));
   }
 
+  accumulation.pop();
+  node.used = false;
   return words;
+}
+
+function getStringFromNodes(nodes: BoardNode[]): string {
+  return nodes.map((node) => node.char).join("");
 }

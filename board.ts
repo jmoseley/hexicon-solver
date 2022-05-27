@@ -16,6 +16,7 @@ export class Board {
   static async create(text: string) {
     // validate the text input first
     const linesRaw = text.split("\n").filter((line) => line.length > 0);
+    debug("linesRaw", linesRaw);
     if (linesRaw.length !== EXPECTED_LINE_LENGTHS.length) {
       throw new Error(
         `Expected ${EXPECTED_LINE_LENGTHS.length} lines, got ${linesRaw.length}`
@@ -41,6 +42,8 @@ export class Board {
     }
 
     readline.close();
+
+    debug("lines", lines);
 
     const nodes = lines.map((line) => line.map((char) => new BoardNode(char)));
 
@@ -96,6 +99,18 @@ export class Board {
     }
 
     return graph;
+  }
+
+  countUsed() {
+    let count = 0;
+    for (const line of this.nodes) {
+      for (const node of line) {
+        if (node.used) {
+          count++;
+        }
+      }
+    }
+    return count;
   }
 
   copy() {

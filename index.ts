@@ -9,14 +9,20 @@ async function main() {
 
   const text = await extractTextFromScreenshot("./sample.png");
 
-  const graph = await Board.create(text);
+  const board = await Board.create(text);
 
-  const results = findAllWords(graph, dictionary);
+  const results = findAllWords(board, dictionary);
 
   console.info(
     results
-      .filter(({ word }) => word.length > 5)
-      .map(({ startNode, word }) => `${startNode.coords}: ${word}`)
+      .filter((wordNodes) => wordNodes.length > 5)
+      .sort((a, b) => b.length - a.length)
+      .map(
+        (wordNodes) =>
+          `${wordNodes[0].coords}: ${wordNodes
+            .map((node) => node.char)
+            .join("")}`
+      )
   );
 }
 
