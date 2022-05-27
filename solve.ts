@@ -10,7 +10,7 @@ export function findAllWords(board: Board, dictionary: Trie) {
   for (const line of board.nodes) {
     for (const node of line) {
       debug("Starting at node", node.char, node.coords);
-      words.push(...getWords(board, node, node, "", dictionary));
+      words.push(...getWords(board, node, node, [], dictionary));
     }
   }
 
@@ -22,25 +22,26 @@ function getWords(
   board: Board,
   startNode: BoardNode,
   currentNode: BoardNode,
-  accumulation: string,
+  accumulation: BoardNode[],
   dictionary: Trie
 ): { startNode: BoardNode; word: string }[] {
-  debug(`Working on '${accumulation}'`);
+  const accumulatedString = getStringFromNodes(accumulation);
+  debug(`Working on '${accumulatedString}'`);
   if (accumulation.length > 10) {
     return [];
   }
   // Check if the trie contains the accumulation
-  if (!dictionary.containsPrefix(accumulation)) {
+  if (!dictionary.containsPrefix(accumulatedString)) {
     return [];
   }
 
   const words = [] as { startNode: BoardNode; word: string }[];
 
   currentNode.used = true;
-  if (dictionary.contains(accumulation + currentNode.char)) {
-    words.push({ startNode, word: accumulation + currentNode.char });
+  if (dictionary.contains(accumulatedString)) {
+    words.push({ startNode, word: accumulatedString });
   }
-  accumulation = accumulation + currentNode.char;
+  accumulation.push(currentNode);
 
   for (const neighbor of currentNode.neighbors) {
     if (neighbor.used) {
@@ -54,4 +55,8 @@ function getWords(
   }
 
   return words;
+}
+
+function getStringFromNodes(nodes: BoardNode[]): string {
+  return nodes.map((node) => node.char).join("");
 }
