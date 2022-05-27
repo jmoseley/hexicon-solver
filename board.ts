@@ -1,15 +1,17 @@
-// Expected lengths of the extracted lines. Lets the user correct
-
+import debugFactory from "debug";
 import { question, readline } from "./util";
 
+// Expected lengths of the extracted lines. Lets the user correct
 // if things are missed. (Likely "I" will be missed by the OCR)
 const EXPECTED_LINE_LENGTHS = [
   1, 2, 3, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 3, 2, 1,
 ];
 
+const debug = debugFactory("board");
+
 // Graph to represent the hexagonal board
 export class Board {
-  constructor(public nodes: Node[][]) {}
+  constructor(public nodes: BoardNode[][]) {}
 
   static async create(text: string) {
     // validate the text input first
@@ -40,56 +42,55 @@ export class Board {
 
     readline.close();
 
-    const nodes = lines.map((line) => line.map((char) => new Node(char)));
+    const nodes = lines.map((line) => line.map((char) => new BoardNode(char)));
 
     return this.createFromNodes(nodes);
   }
 
-  static createFromNodes(nodes: Node[][]) {
+  static createFromNodes(nodes: BoardNode[][]) {
     const graph = new Board(nodes);
 
-    // TODO: Can this be a loop or something?
     for (const [lineNum, line] of nodes.entries()) {
-      // console.log("lineNum", lineNum);
+      debug("lineNum", lineNum);
       for (const [nodeNum, node] of line.entries()) {
         node.setCoords([lineNum, nodeNum]);
-        // console.log("For node: ", node.char);
+        debug("For node: ", node.char);
 
         // This is the upper area
         if (lineNum < 3) {
           node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-          // console.log(`1. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
+          debug(`1. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
           node.addNeighbor(nodes[lineNum + 1]?.[nodeNum + 1]);
-          // console.log(`2. Added ${nodes[lineNum + 1]?.[nodeNum + 1]?.char}`);
+          debug(`2. Added ${nodes[lineNum + 1]?.[nodeNum + 1]?.char}`);
           node.addNeighbor(nodes[lineNum + 2]?.[nodeNum + 1]);
-          // console.log(`3. Added ${nodes[lineNum + 2]?.[nodeNum + 1]?.char}`);
+          debug(`3. Added ${nodes[lineNum + 2]?.[nodeNum + 1]?.char}`);
         }
         // this is the mid area
         else if (lineNum < 12) {
           if (line.length === 4) {
             node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-            // console.log(`1. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
+            debug(`1. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
             node.addNeighbor(nodes[lineNum + 1]?.[nodeNum + 1]);
-            // console.log(`2. Added ${nodes[lineNum + 1][nodeNum + 1]?.char}`);
+            debug(`2. Added ${nodes[lineNum + 1][nodeNum + 1]?.char}`);
             node.addNeighbor(nodes[lineNum + 2]?.[nodeNum]);
-            // console.log(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
+            debug(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
           } else {
             node.addNeighbor(nodes[lineNum + 1]?.[nodeNum - 1]);
-            // console.log(`1. Added ${nodes[lineNum + 1][nodeNum - 1]?.char}`);
+            debug(`1. Added ${nodes[lineNum + 1][nodeNum - 1]?.char}`);
             node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-            // console.log(`2. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
+            debug(`2. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
             node.addNeighbor(nodes[lineNum + 2]?.[nodeNum]);
-            // console.log(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
+            debug(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
           }
         }
         // this is the lower area
         else {
           node.addNeighbor(nodes[lineNum + 1]?.[nodeNum - 1]);
-          // console.log(`1. Added ${nodes[lineNum + 1]?.[nodeNum - 1]?.char}`);
+          debug(`1. Added ${nodes[lineNum + 1]?.[nodeNum - 1]?.char}`);
           node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-          // console.log(`2. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
+          debug(`2. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
           node.addNeighbor(nodes[lineNum + 2]?.[nodeNum - 1]);
-          // console.log(`3. Added ${nodes[lineNum + 2]?.[nodeNum - 1]?.char}`);
+          debug(`3. Added ${nodes[lineNum + 2]?.[nodeNum - 1]?.char}`);
         }
       }
     }
@@ -104,13 +105,13 @@ export class Board {
   }
 }
 
-export class Node {
-  public neighbors = new Set<Node>();
+export class BoardNode {
+  public neighbors = new Set<BoardNode>();
   public used = false;
   public coords: [number, number] = [-1, -1];
   constructor(public char: string) {}
 
-  addNeighbor(node?: Node) {
+  addNeighbor(node?: BoardNode) {
     if (!node || this.neighbors.has(node)) {
       return;
     }
@@ -124,7 +125,7 @@ export class Node {
   }
 
   copy() {
-    const node = new Node(this.char);
+    const node = new BoardNode(this.char);
     node.used = this.used;
     node.coords = this.coords;
 
