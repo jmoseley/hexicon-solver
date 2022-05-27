@@ -1,239 +1,10 @@
 import * as fs from "fs";
 import Tesseract from "tesseract.js";
 import sharp from "sharp";
-import readlineFactory from "readline";
-// import { Trie, TrieNode } from "@datastructures-js/trie";
 
-const readline = readlineFactory.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
-class Trie {
-  private root = new TrieNode(null, null);
-  constructor() {}
-
-  insert(word: string) {
-    let node = this.root; // we start at the root
-
-    // for every character in the word
-    for (let i = 0; i < word.length; i++) {
-      // check to see if character node exists in children.
-      if (!node.children[word[i]]) {
-        // if it doesn't exist, we then create it.
-        node.children[word[i]] = new TrieNode(word[i], node);
-      }
-
-      // proceed to the next depth in the trie.
-      node = node.children[word[i]];
-
-      // finally, we check to see if it's the last word.
-      if (i == word.length - 1) {
-        // if it is, we set the end flag to true.
-        node.end = true;
-      }
-    }
-  }
-
-  contains(word: string) {
-    let node = this.root;
-
-    // for every character in the word
-    for (let i = 0; i < word.length; i++) {
-      // check to see if character node exists in children.
-      if (node.children[word[i]]) {
-        // if it exists, proceed to the next depth of the trie.
-        node = node.children[word[i]];
-      } else {
-        // doesn't exist, return false since it's not a valid word.
-        return false;
-      }
-    }
-
-    // we finished going through all the words, but is it a whole word?
-    return node.end;
-  }
-
-  containsPrefix(prefix: string) {
-    let node = this.root;
-
-    if (prefix.length === 0) {
-      return true;
-    }
-
-    // for every character in the prefix
-    for (let i = 0; i < prefix.length; i++) {
-      // make sure prefix actually has words
-      if (node.children[prefix[i]]) {
-        node = node.children[prefix[i]];
-      } else {
-        // there's none. just return it.
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  find(prefix: string) {
-    let node = this.root;
-    let output = [] as string[];
-
-    // for every character in the prefix
-    for (let i = 0; i < prefix.length; i++) {
-      // make sure prefix actually has words
-      if (node.children[prefix[i]]) {
-        node = node.children[prefix[i]];
-      } else {
-        // there's none. just return it.
-        return output;
-      }
-    }
-    // recursively find all words in the node
-    findAllWords(node, output);
-
-    return output;
-  }
-}
-
-const findAllWords = (node: TrieNode, arr: string[]) => {
-  // base case, if node is at a word, push to output
-  if (node.end) {
-    arr.unshift(node.getWord());
-  }
-
-  // iterate through each children, call recursive findAllWords
-  for (let child in node.children) {
-    findAllWords(node.children[child], arr);
-  }
-};
-
-class TrieNode {
-  public children: { [key: string]: TrieNode } = {};
-  public end: boolean = false;
-  constructor(private key: string | null, public parent: TrieNode | null) {}
-
-  public getWord() {
-    let output = [] as string[];
-    let node: TrieNode | null = this;
-
-    while (node !== null) {
-      if (node.key !== null) {
-        output.unshift(node.key);
-        node = node.parent;
-      }
-    }
-
-    return output.join("");
-  }
-}
-
-// Graph to represent the hexagonal board
-class Graph {
-  constructor(public nodes: Node[][]) {}
-
-  static create(lines: string[][]) {
-    const nodes = lines.map((line) => line.map((char) => new Node(char)));
-
-    return this.createFromNodes(nodes);
-  }
-
-  static createFromNodes(nodes: Node[][]) {
-    const graph = new Graph(nodes);
-
-    // TODO: Can this be a loop or something?
-    for (const [lineNum, line] of nodes.entries()) {
-      // console.log("lineNum", lineNum);
-      for (const [nodeNum, node] of line.entries()) {
-        node.setCoords([lineNum, nodeNum]);
-        // console.log("For node: ", node.char);
-
-        // This is the upper area
-        if (lineNum < 3) {
-          node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-          // console.log(`1. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
-          node.addNeighbor(nodes[lineNum + 1]?.[nodeNum + 1]);
-          // console.log(`2. Added ${nodes[lineNum + 1]?.[nodeNum + 1]?.char}`);
-          node.addNeighbor(nodes[lineNum + 2]?.[nodeNum + 1]);
-          // console.log(`3. Added ${nodes[lineNum + 2]?.[nodeNum + 1]?.char}`);
-        }
-        // this is the mid area
-        else if (lineNum < 12) {
-          if (line.length === 4) {
-            node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-            // console.log(`1. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
-            node.addNeighbor(nodes[lineNum + 1]?.[nodeNum + 1]);
-            // console.log(`2. Added ${nodes[lineNum + 1][nodeNum + 1]?.char}`);
-            node.addNeighbor(nodes[lineNum + 2]?.[nodeNum]);
-            // console.log(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
-          } else {
-            node.addNeighbor(nodes[lineNum + 1]?.[nodeNum - 1]);
-            // console.log(`1. Added ${nodes[lineNum + 1][nodeNum - 1]?.char}`);
-            node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-            // console.log(`2. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
-            node.addNeighbor(nodes[lineNum + 2]?.[nodeNum]);
-            // console.log(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
-          }
-        }
-        // this is the lower area
-        else {
-          node.addNeighbor(nodes[lineNum + 1]?.[nodeNum - 1]);
-          // console.log(`1. Added ${nodes[lineNum + 1]?.[nodeNum - 1]?.char}`);
-          node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-          // console.log(`2. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
-          node.addNeighbor(nodes[lineNum + 2]?.[nodeNum - 1]);
-          // console.log(`3. Added ${nodes[lineNum + 2]?.[nodeNum - 1]?.char}`);
-        }
-      }
-    }
-
-    return graph;
-  }
-
-  copy() {
-    const nodes = this.nodes.map((line) => line.map((node) => node.copy()));
-
-    return Graph.createFromNodes(nodes);
-  }
-}
-
-class Node {
-  public neighbors = new Set<Node>();
-  public used = false;
-  public coords: [number, number] = [-1, -1];
-  constructor(public char: string) {}
-
-  addNeighbor(node?: Node) {
-    if (!node || this.neighbors.has(node)) {
-      return;
-    }
-
-    this.neighbors.add(node);
-    node.addNeighbor(this);
-  }
-
-  setCoords(coords: [number, number]) {
-    this.coords = coords;
-  }
-
-  copy() {
-    const node = new Node(this.char);
-    node.used = this.used;
-    node.coords = this.coords;
-
-    return node;
-  }
-}
-
-async function question(question: string): Promise<string> {
-  const answer = await new Promise<string>((resolve) => {
-    readline.question(question, (answer) => {
-      resolve(answer);
-    });
-  });
-
-  return answer;
-}
+import { Trie } from "./trie";
+import { Graph, Node } from "./graph";
+import { loadWords, question, readline } from "./util";
 
 // Expected lengths of the extracted lines. Lets the user correct
 // if things are missed. (Likely "I" will be missed by the OCR)
@@ -327,7 +98,9 @@ async function main() {
   }
 
   console.log(
-    words.map(({ startNode, word }) => `${startNode.coords}: ${word}`)
+    words
+      .filter(({ word }) => word.length > 5)
+      .map(({ startNode, word }) => `${startNode.coords}: ${word}`)
   );
 }
 
@@ -368,16 +141,6 @@ function getWords(
   }
 
   return words;
-}
-
-function loadWords(): Trie {
-  const words = fs.readFileSync("./scrabble_word_list.txt", "utf8").split("\n");
-
-  const trie = new Trie();
-  for (const word of words) {
-    trie.insert(word.toUpperCase());
-  }
-  return trie;
 }
 
 main();
