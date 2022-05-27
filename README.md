@@ -10,6 +10,10 @@ yarn
 yarn solve
 ```
 
+## Sample Output
+
+![result](./result.png)
+
 ## How it works
 
 Start with a screenshot of the board (only tested with screenshots from my Pixel 3, adjustments will need to be made for screenshots of other resolutions)

@@ -5,8 +5,7 @@
   "author": "Jeremy Moseley <jeremy@moseley.dev>",
   "license": "MIT",
   "scripts": {
-    "solve": "FORCE_COLOR=true yarn execute | less -r",
-    "execute": "ts-node index.ts"
+    "solve": "ts-node index.ts"
   },
   "devDependencies": {
     "@types/debug": "^4.1.7",
