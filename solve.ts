@@ -24,6 +24,7 @@ function getWords(
   accumulation: BoardNode[],
   dictionary: Trie
 ): BoardNode[][] {
+  // Remember to pop and mark as unused before returning
   accumulation.push(node);
   node.used = true;
 

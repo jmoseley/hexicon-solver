@@ -29,7 +29,7 @@ export class Board {
     // to correct any that aren't.
     let colorPosition = 0;
     for (const [idx, lineStr] of linesRaw.entries()) {
-      const line = lineStr.split(" ").filter((word) => word.length > 0);
+      const line = lineStr.split("").filter((word) => word.trim().length > 0);
 
       if (line.length !== EXPECTED_LINE_LENGTHS[idx]) {
         console.log(
