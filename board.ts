@@ -1,4 +1,5 @@
 import debugFactory from "debug";
+import { Color } from "./extract_colors";
 import { question, readline } from "./util";
 
 // Expected lengths of the extracted lines. Lets the user correct
@@ -13,7 +14,7 @@ const debug = debugFactory("board");
 export class Board {
   constructor(public nodes: BoardNode[][]) {}
 
-  static async create(text: string) {
+  static async create(text: string, colors: Color[]) {
     // validate the text input first
     const linesRaw = text.split("\n").filter((line) => line.length > 0);
     debug("linesRaw", linesRaw);
@@ -22,10 +23,11 @@ export class Board {
         `Expected ${EXPECTED_LINE_LENGTHS.length} lines, got ${linesRaw.length}`
       );
     }
-    const lines = [] as string[][];
+    const lines = [] as { char: string; color: Color }[][];
 
     // Validate each line is the right length, and ask the user
     // to correct any that aren't.
+    let colorPosition = 0;
     for (const [idx, lineStr] of linesRaw.entries()) {
       const line = lineStr.split(" ").filter((word) => word.length > 0);
 
@@ -35,9 +37,19 @@ export class Board {
         );
 
         const newLine = await question(`Enter new line (got ${line}): `);
-        lines[idx] = newLine.split("").map((char) => char.toUpperCase().trim());
+        lines[idx] = newLine.split("").map((char) => {
+          return {
+            char: char.toUpperCase().trim(),
+            color: colors[colorPosition++],
+          };
+        });
       } else {
-        lines[idx] = line;
+        lines[idx] = line.map((char) => {
+          return {
+            char: char.toUpperCase().trim(),
+            color: colors[colorPosition++],
+          };
+        });
       }
     }
 
@@ -45,13 +57,15 @@ export class Board {
 
     debug("lines", lines);
 
-    const nodes = lines.map((line) => line.map((char) => new BoardNode(char)));
+    const nodes = lines.map((line, lineNum) =>
+      line.map(({ char, color }) => new BoardNode(char, color))
+    );
 
     return this.createFromNodes(nodes);
   }
 
   static createFromNodes(nodes: BoardNode[][]) {
-    const graph = new Board(nodes);
+    const boards = new Board(nodes);
 
     for (const [lineNum, line] of nodes.entries()) {
       debug("lineNum", lineNum);
@@ -98,25 +112,7 @@ export class Board {
       }
     }
 
-    return graph;
-  }
-
-  countUsed() {
-    let count = 0;
-    for (const line of this.nodes) {
-      for (const node of line) {
-        if (node.used) {
-          count++;
-        }
-      }
-    }
-    return count;
-  }
-
-  copy() {
-    const nodes = this.nodes.map((line) => line.map((node) => node.copy()));
-
-    return Board.createFromNodes(nodes);
+    return boards;
   }
 }
 
@@ -124,7 +120,7 @@ export class BoardNode {
   public neighbors = new Set<BoardNode>();
   public used = false;
   public coords: [number, number] = [-1, -1];
-  constructor(public char: string) {}
+  constructor(public char: string, public color?: Color) {}
 
   addNeighbor(node?: BoardNode) {
     if (!node || this.neighbors.has(node)) {
@@ -137,13 +133,5 @@ export class BoardNode {
 
   setCoords(coords: [number, number]) {
     this.coords = coords;
-  }
-
-  copy() {
-    const node = new BoardNode(this.char);
-    node.used = this.used;
-    node.coords = this.coords;
-
-    return node;
   }
 }

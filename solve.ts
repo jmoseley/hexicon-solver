@@ -11,7 +11,6 @@ export function findAllWords(board: Board, dictionary: Trie) {
     for (const node of line) {
       debug("Starting at node", node.char, node.coords);
       words.push(...getWords(board, node, [], dictionary));
-      debug("after", board.countUsed());
     }
   }
 
@@ -45,7 +44,11 @@ function getWords(
   }
 
   for (const neighbor of node.neighbors) {
-    if (neighbor.used) {
+    if (
+      neighbor.used ||
+      neighbor.color === "red" ||
+      neighbor.color === "very_red"
+    ) {
       continue;
     }
     words.push(...getWords(board, neighbor, accumulation, dictionary));

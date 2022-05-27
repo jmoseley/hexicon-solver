@@ -12,12 +12,22 @@ export function printWordOnBoard(board: Board, word: BoardNode[]) {
       const index = word.indexOf(node);
       if (index > -1) {
         if (index === 0) {
-          letters.push(chalk.blueBright(node.char));
+          letters.push(chalk.greenBright(node.char));
         } else {
           letters.push(chalk.green(node.char));
         }
       } else {
-        letters.push(node.char);
+        if (node.color === "red") {
+          letters.push(chalk.redBright(node.char));
+        } else if (node.color === "very_red") {
+          letters.push(chalk.red(node.char));
+        } else if (node.color === "blue") {
+          letters.push(chalk.blueBright(node.char));
+        } else if (node.color === "very_blue") {
+          letters.push(chalk.blue(node.char));
+        } else {
+          letters.push(node.char);
+        }
       }
     }
   }
