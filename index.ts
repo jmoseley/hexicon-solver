@@ -2,7 +2,7 @@ import { Board } from "./board";
 import { loadWords } from "./util";
 import { extractTextFromScreenshot } from "./ocr";
 import { findAllWords } from "./solve";
-import { printWordOnBoard } from "./format";
+import { printBoard } from "./format";
 import { extractHexColor } from "./extract_colors";
 
 async function main() {
@@ -17,9 +17,9 @@ async function main() {
 
   console.info(
     results
-      .filter((wordNodes) => wordNodes.length > 4)
+      // .filter((wordNodes) => wordNodes.length > 4)
       .sort((a, b) => b.length - a.length)
-      .forEach((wordNodes) => printWordOnBoard(board, wordNodes))
+      .forEach((wordNodes) => console.info(printBoard(board, wordNodes)))
   );
 }
 

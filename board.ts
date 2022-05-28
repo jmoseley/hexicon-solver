@@ -120,6 +120,8 @@ export class BoardNode {
   public neighbors = new Set<BoardNode>();
   public used = false;
   public coords: [number, number] = [-1, -1];
+  public amSwapped: boolean = false;
+  public swappedWith: BoardNode | null = null;
   constructor(public char: string, public color?: Color) {}
 
   addNeighbor(node?: BoardNode) {
@@ -131,7 +133,41 @@ export class BoardNode {
     node.addNeighbor(this);
   }
 
+  swapWith(node: BoardNode, backSwap: boolean = false) {
+    this.amSwapped = !backSwap;
+    node.amSwapped = !backSwap;
+
+    this.swappedWith = node;
+    node.swappedWith = this;
+
+    const tempChar = this.char;
+    this.char = node.char;
+    node.char = tempChar;
+
+    const tempColor = this.color;
+    this.color = node.color;
+    node.color = tempColor;
+
+    const tempUsed = this.used;
+    this.used = node.used;
+    node.used = tempUsed;
+  }
+
   setCoords(coords: [number, number]) {
     this.coords = coords;
+  }
+
+  clone(recurse = true) {
+    const node = new BoardNode(this.char, this.color);
+    node.used = this.used;
+    node.coords = this.coords;
+    node.amSwapped = this.amSwapped;
+
+    if (recurse && this.swappedWith) {
+      node.swappedWith = this.swappedWith.clone(false);
+      node.swappedWith!.swappedWith = node;
+    }
+
+    return node;
   }
 }

@@ -2,41 +2,84 @@ import chalk from "chalk";
 
 import { Board, BoardNode } from "./board";
 
-export function printWordOnBoard(board: Board, word: BoardNode[]) {
-  console.info(chalk.greenBright(word.map((node) => node.char).join("")));
-
+export function printBoard(board: Board, word?: BoardNode[]) {
   const letters = [] as string[];
 
   for (const boardLine of board.nodes) {
     for (const node of boardLine) {
-      const index = word.indexOf(node);
-      if (index > -1) {
-        if (index === 0) {
-          letters.push(chalk.greenBright(node.char));
+      if (word) {
+        const wordNode = word.find((node2) => node2.coords === node.coords);
+        if (wordNode) {
+          if (word.indexOf(wordNode) === 0) {
+            letters.push(renderNodeGreen(wordNode, true));
+          } else {
+            letters.push(renderNodeGreen(wordNode));
+          }
         } else {
-          letters.push(chalk.green(node.char));
+          const swappedNode = word.find(
+            (node2) =>
+              node2.swappedWith && node2.swappedWith.coords === node.coords
+          );
+          if (swappedNode) {
+            letters.push(renderNode(swappedNode.swappedWith!));
+          } else {
+            letters.push(renderNode(node));
+          }
         }
       } else {
-        if (node.color === "red") {
-          letters.push(chalk.redBright(node.char));
-        } else if (node.color === "very_red") {
-          letters.push(chalk.red(node.char));
-        } else if (node.color === "blue") {
-          letters.push(chalk.blueBright(node.char));
-        } else if (node.color === "very_blue") {
-          letters.push(chalk.blue(node.char));
-        } else {
-          letters.push(node.char);
-        }
+        letters.push(renderNode(node));
       }
     }
   }
 
-  console.info(boardFromTemplate(letters));
+  return boardFromTemplate(letters, word?.map((node) => node.char).join(""));
 }
 
-function boardFromTemplate(l: string[]): string {
+function renderNodeGreen(node: BoardNode, highlight: boolean = false) {
+  if (node.amSwapped) {
+    if (highlight) {
+      return chalk.bgGreenBright(chalk.black(node.char));
+    }
+    return chalk.bgGreen(chalk.black(node.char));
+  } else {
+    if (highlight) {
+      return chalk.greenBright(node.char);
+    }
+    return chalk.green(node.char);
+  }
+}
+
+function renderNode(node: BoardNode) {
+  if (node.amSwapped) {
+    if (node.color === "red") {
+      return chalk.bgRedBright(node.char);
+    } else if (node.color === "very_red") {
+      return chalk.bgRed(node.char);
+    } else if (node.color === "blue") {
+      return chalk.bgBlueBright(node.char);
+    } else if (node.color === "very_blue") {
+      return chalk.bgBlue(node.char);
+    } else {
+      return chalk.bgGray(node.char);
+    }
+  }
+
+  if (node.color === "red") {
+    return chalk.redBright(node.char);
+  } else if (node.color === "very_red") {
+    return chalk.red(node.char);
+  } else if (node.color === "blue") {
+    return chalk.blueBright(node.char);
+  } else if (node.color === "very_blue") {
+    return chalk.blue(node.char);
+  } else {
+    return node.char;
+  }
+}
+
+function boardFromTemplate(l: string[], word?: string): string {
   return `
+  ${word || ""}
                      ___
                  ___/ X \\___
              ___/ X \\___/ X \\___
