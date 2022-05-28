@@ -5,7 +5,7 @@
   "author": "Jeremy Moseley <jeremy@moseley.dev>",
   "license": "MIT",
   "scripts": {
-    "solve": "ts-node index.ts"
+    "solve": "FORCE_COLOR=true ts-node index.ts"
   },
   "devDependencies": {
     "@types/debug": "^4.1.7",

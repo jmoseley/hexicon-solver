@@ -24,6 +24,10 @@ function getWords(
   accumulation: BoardNode[],
   dictionary: Trie
 ): BoardNode[][] {
+  if (node.color === "red" || node.color === "very_red") {
+    return [];
+  }
+
   // Remember to pop and mark as unused before returning
   accumulation.push(node);
   node.used = true;
