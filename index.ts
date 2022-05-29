@@ -4,6 +4,7 @@ import { extractTextFromScreenshot } from "./ocr";
 import { findAllWords } from "./solve";
 import { printBoard } from "./format";
 import { extractHexColor } from "./extract_colors";
+import { sortWords } from "./score";
 
 async function main() {
   const screenshot = "sample.png";
@@ -15,12 +16,13 @@ async function main() {
   const board = await Board.create(text, colors);
   const results = findAllWords(board, dictionary);
 
-  console.info(
-    results
-      // .filter((wordNodes) => wordNodes.length > 4)
-      .sort((a, b) => b.length - a.length)
-      .forEach((wordNodes) => console.info(printBoard(board, wordNodes)))
-  );
+  const sorted = sortWords(board, results);
+
+  sorted
+    // .filter(({ word }) => word.length > 4)
+    .forEach(({ word, ...rest }) =>
+      console.info(printBoard(board, word, rest))
+    );
 }
 
 main();

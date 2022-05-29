@@ -1,16 +1,25 @@
 import chalk from "chalk";
 
-import { Board, BoardNode } from "./board";
+import { Board, BoardNode, Word } from "./board";
 
-export function printBoard(board: Board, word?: BoardNode[]) {
+export function printBoard(
+  board: Board,
+  word?: Word,
+  score?: {
+    redHexagons: number;
+    blueHexagons: number;
+    redCleared: number;
+    blueCleared: number;
+  }
+) {
   const letters = [] as string[];
 
   for (const boardLine of board.nodes) {
     for (const node of boardLine) {
       if (word) {
-        const wordNode = word.find((node2) => node2.coords === node.coords);
+        const wordNode = word.containsNode(node);
         if (wordNode) {
-          if (word.indexOf(wordNode) === 0) {
+          if (word.isStart(wordNode)) {
             letters.push(renderNodeGreen(wordNode, true));
           } else {
             letters.push(renderNodeGreen(wordNode));
@@ -18,7 +27,8 @@ export function printBoard(board: Board, word?: BoardNode[]) {
         } else {
           const swappedNode = word.find(
             (node2) =>
-              node2.swappedWith && node2.swappedWith.coords === node.coords
+              node2.swappedWith !== null &&
+              node2.swappedWith.coords === node.coords
           );
           if (swappedNode) {
             letters.push(renderNode(swappedNode.swappedWith!));
@@ -32,7 +42,11 @@ export function printBoard(board: Board, word?: BoardNode[]) {
     }
   }
 
-  return boardFromTemplate(letters, word?.map((node) => node.char).join(""));
+  return boardFromTemplate(
+    letters,
+    word?.toString(),
+    `Hexagons: R: ${score?.redHexagons} B: ${score?.blueHexagons} Squares Cleared: R: ${score?.redCleared} B: ${score?.blueCleared}`
+  );
 }
 
 function renderNodeGreen(node: BoardNode, highlight: boolean = false) {
@@ -77,9 +91,13 @@ function renderNode(node: BoardNode) {
   }
 }
 
-function boardFromTemplate(l: string[], word?: string): string {
+function boardFromTemplate(
+  l: string[],
+  word?: string,
+  annotation?: string
+): string {
   return `
-  ${word || ""}
+  ${word || ""}${annotation !== undefined ? `(${annotation})` : ""}
                      ___
                  ___/ X \\___
              ___/ X \\___/ X \\___
