@@ -359,7 +359,103 @@ function getWords(
 }
 ```
 
-## 6. Print the results
+## 6. Score the words
+
+For each word found, figure out the number of hexagons it will give (red or blue), and the number of squares cleared (red or blue).
+
+```typescript
+  countHexagons(word?: Word): {
+    redCount: number;
+    blueCount: number;
+    redCleared: number;
+    blueCleared: number;
+  } {
+    debug("Board");
+    debug(printBoard(this, word));
+    let redCount = 0;
+    let blueCount = 0;
+    let blueCleared = 0;
+    let redCleared = 0;
+    for (const line of this.nodes) {
+      for (const node of line) {
+        const hexagonResult = node.isCenterOfHexagon(word);
+
+        if (hexagonResult) {
+          if (hexagonResult.color === "red") {
+            redCount++;
+          }
+          if (hexagonResult.color === "blue") {
+            blueCount++;
+          }
+          blueCleared += hexagonResult.blueCleared;
+          redCleared += hexagonResult.redCleared;
+        }
+      }
+    }
+    return {
+      redCount,
+      blueCount,
+      blueCleared,
+      redCleared,
+    };
+  }
+```
+
+## 7. Sort the result
+
+Sort based on the difference in number of hexagons (blue - red), maximize the number of red squares cleared, and the length of words.
+
+```typescript
+export function sortWords(board: Board, words: Word[]) {
+  return words
+    .map((w) => {
+      const result = board.countHexagons(w);
+      return {
+        word: w,
+        blueHexagons: result.blueCount,
+        redHexagons: result.redCount,
+        redCleared: result.redCleared,
+        blueCleared: result.blueCleared,
+      };
+    })
+    .sort((a, b) => {
+      // Sort by the difference in red and blue hexagons
+      if (a.redHexagons - a.blueHexagons < b.redHexagons - b.blueHexagons) {
+        return -1;
+      }
+      if (a.redHexagons - a.blueHexagons > b.redHexagons - b.blueHexagons) {
+        return 1;
+      }
+
+      // Sort by the max number of red squares cleared
+      if (a.redCleared > b.redCleared) {
+        return -1;
+      }
+      if (a.redCleared < b.redCleared) {
+        return 1;
+      }
+
+      // Sort by the minimum number of blue squares cleared
+      if (a.blueCleared < b.blueCleared) {
+        return -1;
+      }
+      if (a.blueCleared > b.blueCleared) {
+        return 1;
+      }
+
+      // Sort by word length
+      if (a.word.length > b.word.length) {
+        return -1;
+      }
+      if (a.word.length < b.word.length) {
+        return 1;
+      }
+      return 0;
+    });
+}
+```
+
+## 8. Print the results
 
 Take the results and pretty print them on the terminal
 
