@@ -1,7 +1,7 @@
 import debugFactory from "debug";
 import { Color } from "./extract_colors";
 import { printBoard } from "./format";
-import { question, readline } from "./util";
+import { question } from "./util";
 
 // Expected lengths of the extracted lines. Lets the user correct
 // if things are missed. (Likely "I" will be missed by the OCR)
@@ -53,8 +53,6 @@ export class Board {
         });
       }
     }
-
-    readline.close();
 
     debug("lines", lines);
 
@@ -209,12 +207,19 @@ export class BoardNode {
       this.color,
       this.neighbors.size
     );
-    const centerWordNode = word?.containsNode(this);
-    // If the node is blue or red, or its a word node it can be the center of a hexagon
+
+    // Fixed squares can't be the center of hexagons
     if (
       this.color === "very_blue" ||
-      !(this.color === "blue" || this.color === "red" || centerWordNode)
+      this.color === "very_red" ||
+      this.color === "none"
     ) {
+      return false;
+    }
+
+    const centerWordNode = word?.containsNode(this);
+    // If the node is blue or red, or its a word node it can be the center of a hexagon
+    if (!(this.color === "blue" || this.color === "red" || centerWordNode)) {
       return false;
     }
     debug("Center is blue or red");
@@ -228,6 +233,12 @@ export class BoardNode {
     let blueCount = 0;
     let blueCleared = 0;
     let count = 0;
+
+    if (this.color === "blue") {
+      blueCount++;
+    } else if (this.color === "red") {
+      redCount++;
+    }
     for (const neighbor of this.neighbors) {
       debug("neighbor", neighbor.char, neighbor.coords, neighbor.color);
       const wordNode = word?.containsNode(neighbor);
@@ -252,13 +263,24 @@ export class BoardNode {
       }
     }
 
-    debug("count", count, "redCleared", redCleared, "blueCleared", blueCleared);
+    const hexagonColor = redCount > blueCount ? "red" : "blue";
+
+    debug(
+      "count",
+      count,
+      "redCleared",
+      redCleared,
+      "blueCleared",
+      blueCleared,
+      "hexagonColor",
+      hexagonColor
+    );
 
     if (count >= 6) {
       return {
         redCleared,
         blueCleared,
-        color: redCount > blueCount ? "red" : "blue",
+        color: hexagonColor,
       };
     }
 

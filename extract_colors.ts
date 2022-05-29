@@ -86,7 +86,7 @@ function isWithin(value: number, target: number, tolerance: number) {
 export async function extractHexColor(filename: string): Promise<Color[]> {
   const results = [] as Color[];
 
-  const promises = COORDINATES.map(async (coords, idx) => {
+  for (const [idx, coords] of COORDINATES.entries()) {
     const imageData = await sharp(filename)
       .extract({
         width: 3,
@@ -106,29 +106,35 @@ export async function extractHexColor(filename: string): Promise<Color[]> {
     );
 
     if (color) {
-      return color[1];
+      results.push(color[1]);
+      continue;
     } else {
       const newColor = await question(
-        `What color is character ${idx + 1} ${total}?`
+        `What color is character ${idx + 1} ${total}? `
       );
       switch (newColor) {
         case "red":
-          return "red";
+          results.push("red");
+          break;
         case "blue":
-          return "blue";
+          results.push("blue");
+          break;
         case "very_red":
-          return "very_red";
+          results.push("very_red");
+          break;
         case "very_blue":
-          return "very_blue";
+          results.push("very_blue");
+          break;
+        case "grey":
+        case "":
+        case "none":
+          results.push("none");
+          break;
         default:
           console.error(`Unknown color ${newColor}`);
           process.exit(1);
       }
     }
-  });
-
-  for (const promise of promises) {
-    results.push(await promise);
   }
 
   return results;

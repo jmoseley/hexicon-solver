@@ -15,10 +15,10 @@ export function sortWords(board: Board, words: Word[]) {
     })
     .sort((a, b) => {
       // Sort by the difference in red and blue hexagons
-      if (a.redHexagons - a.blueHexagons < b.redHexagons - b.blueHexagons) {
+      if (a.blueHexagons > b.blueHexagons) {
         return -1;
       }
-      if (a.redHexagons - a.blueHexagons > b.redHexagons - b.blueHexagons) {
+      if (a.blueHexagons < b.blueHexagons) {
         return 1;
       }
 
