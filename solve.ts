@@ -1,6 +1,6 @@
 import debugFactory from "debug";
 
-import { Board, BoardNode } from "./board";
+import { Board, BoardNode, Word } from "./board";
 import { printBoard } from "./format";
 import { Trie } from "./trie";
 
@@ -39,7 +39,7 @@ function getWords(
   accumulation: BoardNode[],
   dictionary: Trie,
   hasSwapped: boolean = false
-): BoardNode[][] {
+): Word[] {
   debug(
     "getWords",
     hasSwapped,
@@ -47,7 +47,7 @@ function getWords(
     accumulation.map((node) => node.char).join("")
   );
   debug(printBoard(board));
-  if (node.color === "red" || node.color === "very_red") {
+  if (node.used || node.color === "red" || node.color === "very_red") {
     return [];
   }
 
@@ -63,21 +63,14 @@ function getWords(
     return [];
   }
 
-  const words = [] as BoardNode[][];
+  const words = [] as Word[];
 
   if (dictionary.contains(accumulatedString)) {
     debug("Found word:", accumulatedString);
-    words.push([...accumulation.map((node) => node.clone())]);
+    words.push(new Word(accumulation));
   }
 
   for (const neighbor of node.neighbors) {
-    if (
-      neighbor.used ||
-      neighbor.color === "red" ||
-      neighbor.color === "very_red"
-    ) {
-      continue;
-    }
     words.push(
       ...getWords(board, neighbor, accumulation, dictionary, hasSwapped)
     );
@@ -91,7 +84,8 @@ function getWords(
       if (
         neighbor.used ||
         neighbor.color === "very_red" ||
-        neighbor.color === "very_blue"
+        neighbor.color === "very_blue" ||
+        node.color === "very_blue"
       ) {
         continue;
       }

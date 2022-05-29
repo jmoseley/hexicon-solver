@@ -1,5 +1,6 @@
 import debugFactory from "debug";
 import { Color } from "./extract_colors";
+import { printBoard } from "./format";
 import { question, readline } from "./util";
 
 // Expected lengths of the extracted lines. Lets the user correct
@@ -65,7 +66,7 @@ export class Board {
   }
 
   static createFromNodes(nodes: BoardNode[][]) {
-    const boards = new Board(nodes);
+    const board = new Board(nodes);
 
     for (const [lineNum, line] of nodes.entries()) {
       debug("lineNum", lineNum);
@@ -112,7 +113,46 @@ export class Board {
       }
     }
 
-    return boards;
+    return board;
+  }
+
+  // Count the hexagons in the board. This can also use the given word
+  // to calculate the result as if that word had been played. The word
+  // nodes should not be nodes that are already in the board.
+  countHexagons(word?: Word): {
+    redCount: number;
+    blueCount: number;
+    redCleared: number;
+    blueCleared: number;
+  } {
+    debug("Board");
+    debug(printBoard(this, word));
+    let redCount = 0;
+    let blueCount = 0;
+    let blueCleared = 0;
+    let redCleared = 0;
+    for (const line of this.nodes) {
+      for (const node of line) {
+        const hexagonResult = node.isCenterOfHexagon(word);
+
+        if (hexagonResult) {
+          if (hexagonResult.color === "red") {
+            redCount++;
+          }
+          if (hexagonResult.color === "blue") {
+            blueCount++;
+          }
+          blueCleared += hexagonResult.blueCleared;
+          redCleared += hexagonResult.redCleared;
+        }
+      }
+    }
+    return {
+      redCount,
+      blueCount,
+      blueCleared,
+      redCleared,
+    };
   }
 }
 
@@ -157,6 +197,74 @@ export class BoardNode {
     this.coords = coords;
   }
 
+  isCenterOfHexagon(
+    word?: Word
+  ):
+    | { redCleared: number; blueCleared: number; color: "red" | "blue" }
+    | false {
+    debug(
+      "check if center",
+      this.char,
+      this.coords,
+      this.color,
+      this.neighbors.size
+    );
+    const centerWordNode = word?.containsNode(this);
+    // If the node is blue or red, or its a word node it can be the center of a hexagon
+    if (
+      this.color === "very_blue" ||
+      !(this.color === "blue" || this.color === "red" || centerWordNode)
+    ) {
+      return false;
+    }
+    debug("Center is blue or red");
+
+    if (this.neighbors.size !== 6) {
+      return false;
+    }
+
+    let redCleared = 0;
+    let redCount = 0;
+    let blueCount = 0;
+    let blueCleared = 0;
+    let count = 0;
+    for (const neighbor of this.neighbors) {
+      debug("neighbor", neighbor.char, neighbor.coords, neighbor.color);
+      const wordNode = word?.containsNode(neighbor);
+      if (wordNode) {
+        debug("Word Node", wordNode.char, wordNode.coords, wordNode.color);
+        blueCount++;
+        count++;
+      } else if (neighbor.color === "blue") {
+        blueCount++;
+        blueCleared++;
+        count++;
+      } else if (neighbor.color === "red") {
+        redCount++;
+        redCleared++;
+        count++;
+      } else if (neighbor.color === "very_blue") {
+        count++;
+        blueCount++;
+      } else if (neighbor.color === "very_red") {
+        count++;
+        redCount++;
+      }
+    }
+
+    debug("count", count, "redCleared", redCleared, "blueCleared", blueCleared);
+
+    if (count >= 6) {
+      return {
+        redCleared,
+        blueCleared,
+        color: redCount > blueCount ? "red" : "blue",
+      };
+    }
+
+    return false;
+  }
+
   clone(recurse = true) {
     const node = new BoardNode(this.char, this.color);
     node.used = this.used;
@@ -169,5 +277,33 @@ export class BoardNode {
     }
 
     return node;
+  }
+}
+
+export class Word {
+  public nodes: BoardNode[] = [];
+
+  constructor(fromNodes: BoardNode[]) {
+    this.nodes = fromNodes.map((node) => node.clone());
+  }
+
+  toString() {
+    return this.nodes.map((node) => node.char).join("");
+  }
+
+  containsNode(node: BoardNode) {
+    return this.nodes.find((n) => n.coords === node.coords);
+  }
+
+  isStart(node: BoardNode) {
+    return this.nodes[0] === node;
+  }
+
+  get length() {
+    return this.nodes.length;
+  }
+
+  find(fn: (node: BoardNode) => boolean) {
+    return this.nodes.find(fn);
   }
 }
