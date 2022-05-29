@@ -13,17 +13,19 @@ export function loadWords(): Trie {
   return trie;
 }
 
-export const readline = readlineFactory.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
 export async function question(question: string): Promise<string> {
+  const readline = readlineFactory.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
   const answer = await new Promise<string>((resolve) => {
     readline.question(question, (answer) => {
       resolve(answer);
     });
   });
+
+  readline.close();
 
   return answer;
 }
