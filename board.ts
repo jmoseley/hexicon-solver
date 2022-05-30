@@ -127,8 +127,8 @@ export class Board {
     debug(printBoard(this, word));
     let redCount = 0;
     let blueCount = 0;
-    let blueCleared = 0;
-    let redCleared = 0;
+    let blueCleared: Set<string> = new Set();
+    let redCleared: Set<string> = new Set();
     for (const line of this.nodes) {
       for (const node of line) {
         const hexagonResult = node.isCenterOfHexagon(word);
@@ -140,16 +140,20 @@ export class Board {
           if (hexagonResult.color === "blue") {
             blueCount++;
           }
-          blueCleared += hexagonResult.blueCleared;
-          redCleared += hexagonResult.redCleared;
+          hexagonResult.blueCleared.forEach((node) =>
+            blueCleared.add(JSON.stringify(node.coords))
+          );
+          hexagonResult.redCleared.forEach((node) =>
+            redCleared.add(JSON.stringify(node.coords))
+          );
         }
       }
     }
     return {
       redCount,
       blueCount,
-      blueCleared,
-      redCleared,
+      blueCleared: blueCleared.size,
+      redCleared: redCleared.size,
     };
   }
 }
@@ -195,10 +199,12 @@ export class BoardNode {
     this.coords = coords;
   }
 
-  isCenterOfHexagon(
-    word?: Word
-  ):
-    | { redCleared: number; blueCleared: number; color: "red" | "blue" }
+  isCenterOfHexagon(word?: Word):
+    | {
+        redCleared: BoardNode[];
+        blueCleared: BoardNode[];
+        color: "red" | "blue";
+      }
     | false {
     debug(
       "check if center",
@@ -208,83 +214,74 @@ export class BoardNode {
       this.neighbors.size
     );
 
-    // Fixed squares can't be the center of hexagons
-    if (
-      this.color === "very_blue" ||
-      this.color === "very_red" ||
-      this.color === "none"
-    ) {
-      return false;
-    }
-
-    const centerWordNode = word?.containsNode(this);
-    // If the node is blue or red, or its a word node it can be the center of a hexagon
-    if (!(this.color === "blue" || this.color === "red" || centerWordNode)) {
-      return false;
-    }
-    debug("Center is blue or red");
-
+    // Cannot be the center of the hexagon if it has less than 6 neighbors
     if (this.neighbors.size !== 6) {
       return false;
     }
 
-    let redCleared = 0;
+    const centerWordNode = word?.containsNode(this);
+
+    // Fixed squares can't be the center of hexagons, nor squares with no color.
+    if (
+      (this.color === "very_blue" ||
+        this.color === "very_red" ||
+        this.color === "none") &&
+      !centerWordNode
+    ) {
+      return false;
+    }
+
+    let redCleared = [] as BoardNode[];
     let redCount = 0;
     let blueCount = 0;
-    let blueCleared = 0;
-    let count = 0;
+    let blueCleared = [] as BoardNode[];
 
-    if (this.color === "blue") {
+    // If the node is blue or red, or its a word node it can be the center of a hexagon
+    if (this.color === "blue" || centerWordNode) {
       blueCount++;
     } else if (this.color === "red") {
       redCount++;
+    } else {
+      return false;
     }
+
     for (const neighbor of this.neighbors) {
       debug("neighbor", neighbor.char, neighbor.coords, neighbor.color);
       const wordNode = word?.containsNode(neighbor);
       if (wordNode) {
         debug("Word Node", wordNode.char, wordNode.coords, wordNode.color);
         blueCount++;
-        count++;
       } else if (neighbor.color === "blue") {
         blueCount++;
-        blueCleared++;
-        count++;
+        blueCleared.push(neighbor.clone());
       } else if (neighbor.color === "red") {
         redCount++;
-        redCleared++;
-        count++;
+        redCleared.push(neighbor.clone());
       } else if (neighbor.color === "very_blue") {
-        count++;
         blueCount++;
       } else if (neighbor.color === "very_red") {
-        count++;
         redCount++;
+      } else {
+        return false;
       }
     }
 
     const hexagonColor = redCount > blueCount ? "red" : "blue";
 
     debug(
-      "count",
-      count,
       "redCleared",
-      redCleared,
+      redCleared.length,
       "blueCleared",
-      blueCleared,
+      blueCleared.length,
       "hexagonColor",
       hexagonColor
     );
 
-    if (count >= 6) {
-      return {
-        redCleared,
-        blueCleared,
-        color: hexagonColor,
-      };
-    }
-
-    return false;
+    return {
+      redCleared,
+      blueCleared,
+      color: hexagonColor,
+    };
   }
 
   clone(recurse = true) {
