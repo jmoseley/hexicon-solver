@@ -91,3 +91,5 @@ See [solve.ts](./solve.ts).
 ## 8. Print the results
 
 Take the results and pretty print them on the terminal. This uses a hand crafted ASCII grid, and a simple act of splitting/mapping/joining with the letters from the board.
+
+See [format.ts](./format.ts).
