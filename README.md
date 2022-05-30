@@ -24,7 +24,7 @@ Start with a screenshot of the board (only tested with screenshots from my Pixel
 
 #### 1.1 Crop and increase contrast
 
-```typescript
+```typescript:ocr.ts [13-17]
 const imageData = await sharp(filename)
   .extract({ width: 1080, height: 1440, left: 0, top: 360 })
   .greyscale()
@@ -36,7 +36,7 @@ const imageData = await sharp(filename)
 
 #### 1.2 Use Tesseract to run OCR on the image
 
-```typescript
+```typescript:ocr.ts [18-27]
 const worker = Tesseract.createWorker({});
 await worker.load();
 await worker.loadLanguage("eng");
@@ -56,7 +56,7 @@ return output.data.text;
 
 I used a manually constructed set of coordinates to sample a small bit of color (3x3 pixels) from each box, and then simply summed all the data from the area to get a total "color value". Very simplistic, and probably not the best way to do it, but it works. If a value does not match, the program asks the user to fill it in.
 
-```typescript
+```typescript:extract_color.ts [90-100]
 COORDINATES.map(async (coords, idx) => {
     const imageData = await sharp(filename)
       .extract({
@@ -73,16 +73,11 @@ COORDINATES.map(async (coords, idx) => {
 
 #### 2.2 Check these samples against some configured mapping
 
-```typescript
-// A sample that maps to a color, the Color, and a tolerance for the sample when comparing.
-const COLOR_VALUES: [number, Color, number][] = [
-  [5994, "none", 10],
-  [5499, "red", 10],
-  [4329, "very_red", 30],
-  [3438, "very_blue", 30],
-  [5598, "blue", 30],
-];
+```typescript:extract_colors.ts [74-80]
 
+```
+
+```typescript:ocr.ts [104-128]
 function isWithin(value: number, target: number, tolerance: number) {
   return value >= target - tolerance && value <= target + tolerance;
 }
@@ -119,7 +114,7 @@ if (color) {
 
 This will also validate that each line has the expected number of characters, and prompt the user for a correction if needed. The OCR tends to miss capital "I" characters, so this correction is necessary.
 
-```typescript
+```typescript:board.ts [18-64]
 static async create(text: string, colors: Color[]) {
     // validate the text input first
     const linesRaw = text.split("\n").filter((line) => line.length > 0);
@@ -175,7 +170,7 @@ static async create(text: string, colors: Color[]) {
 
 Depending on where on the board (top triangle, central square, or bottom triangle) there is a slight variance in how to calculate the neighbors, so this logic is segmented across those 3 sections.
 
-```typescript
+```typescript:board.ts [66-115]
 static createFromNodes(nodes: BoardNode[][]) {
     const boards = new Board(nodes);
 
@@ -230,7 +225,7 @@ static createFromNodes(nodes: BoardNode[][]) {
 
 A Trie lets us quickly check if a word is in the word list, or if a given string prefix matches any words in the list. This lets us quickly abandon search paths that do not have any results.
 
-```typescript
+```typescript:trie.ts [5-65]
 insert(word: string) {
     let node = this.root; // we start at the root
 
@@ -298,7 +293,7 @@ insert(word: string) {
 
 ### 5.1 Using each node in the board as that starting point, try to find words
 
-```typescript
+```typescript:solve.ts [9-30]
 export function findAllWords(board: Board, dictionary: Trie) {
   const words = [] as ReturnType<typeof getWords>;
   for (const line of board.nodes) {
@@ -314,7 +309,7 @@ export function findAllWords(board: Board, dictionary: Trie) {
 
 ### 5.2 Use a recursive function to track the current search path and find words
 
-```typescript
+```typescript:solve.ts [36-99]
 // Recursively find the words in the graph
 function getWords(
   board: Board,
@@ -363,7 +358,7 @@ function getWords(
 
 For each word found, figure out the number of hexagons it will give (red or blue), and the number of squares cleared (red or blue).
 
-```typescript
+```typescript:board.ts [120-154]
   countHexagons(word?: Word): {
     redCount: number;
     blueCount: number;
@@ -405,7 +400,7 @@ For each word found, figure out the number of hexagons it will give (red or blue
 
 Sort based on the difference in number of hexagons (blue - red), maximize the number of red squares cleared, and the length of words.
 
-```typescript
+```typescript:score.ts [4-50]
 export function sortWords(board: Board, words: Word[]) {
   return words
     .map((w) => {
@@ -459,7 +454,7 @@ export function sortWords(board: Board, words: Word[]) {
 
 Take the results and pretty print them on the terminal
 
-```typescript
+```typescript:format.ts [5-50]
 export function printWordOnBoard(board: Board, word: BoardNode[]) {
   console.info(chalk.greenBright(word.map((node) => node.char).join("")));
 
