@@ -112,27 +112,19 @@ export async function extractHexColor(filename: string): Promise<Color[]> {
       const newColor = await question(
         `What color is character ${idx + 1} ${total}? `
       );
-      switch (newColor) {
-        case "red":
-          results.push("red");
-          break;
-        case "blue":
-          results.push("blue");
-          break;
-        case "very_red":
-          results.push("very_red");
-          break;
-        case "very_blue":
-          results.push("very_blue");
-          break;
-        case "grey":
-        case "":
-        case "none":
-          results.push("none");
-          break;
-        default:
-          console.error(`Unknown color ${newColor}`);
-          process.exit(1);
+
+      if (newColor === "none" || newColor === "" || newColor === "grey") {
+        results.push("none");
+      } else if (
+        newColor === "red" ||
+        newColor === "blue" ||
+        newColor === "very_red" ||
+        newColor === "very_blue"
+      ) {
+        results.push(newColor);
+      } else {
+        console.error(`Unknown color ${newColor}`);
+        process.exit(1);
       }
     }
   }
