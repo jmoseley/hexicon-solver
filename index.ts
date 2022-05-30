@@ -1,10 +1,11 @@
 import { Board } from "./board";
-import { loadWords } from "./util";
+import { loadWords, question } from "./util";
 import { extractTextFromScreenshot } from "./ocr";
 import { findAllWords } from "./solve";
 import { printBoard } from "./format";
 import { extractHexColor } from "./extract_colors";
 import { sortWords } from "./score";
+import yesno from "yesno";
 
 async function main() {
   const screenshot = "sample.png";
@@ -18,11 +19,16 @@ async function main() {
 
   const sorted = sortWords(board, results);
 
-  sorted
-    // .filter(({ word }) => word.length > 4)
-    .forEach(({ word, ...rest }) =>
-      console.info(printBoard(board, word, rest))
-    );
+  for (const { word, ...rest } of sorted) {
+    console.info(printBoard(board, word, rest));
+    const ok = await yesno({
+      question: "More?",
+      defaultValue: true,
+    });
+    if (!ok) {
+      process.exit(0);
+    }
+  }
 }
 
 main();
