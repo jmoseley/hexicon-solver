@@ -257,9 +257,9 @@ export class BoardNode {
             node2.swappedWith !== null &&
             node2.swappedWith.coords === neighbor.coords
         );
-        if (swappedNode) {
+        if (swappedNode?.swappedWith) {
           debug("Swapped Node", swappedNode.char, swappedNode.coords);
-          neighbor = swappedNode;
+          neighbor = swappedNode.swappedWith;
         }
         if (neighbor.color === "blue") {
           blueCount++;
