@@ -245,24 +245,35 @@ export class BoardNode {
       return false;
     }
 
-    for (const neighbor of this.neighbors) {
+    for (let neighbor of this.neighbors) {
       debug("neighbor", neighbor.char, neighbor.coords, neighbor.color);
       const wordNode = word?.containsNode(neighbor);
       if (wordNode) {
         debug("Word Node", wordNode.char, wordNode.coords, wordNode.color);
         blueCount++;
-      } else if (neighbor.color === "blue") {
-        blueCount++;
-        blueCleared.push(neighbor.clone());
-      } else if (neighbor.color === "red") {
-        redCount++;
-        redCleared.push(neighbor.clone());
-      } else if (neighbor.color === "very_blue") {
-        blueCount++;
-      } else if (neighbor.color === "very_red") {
-        redCount++;
       } else {
-        return false;
+        const swappedNode = word?.find(
+          (node2) =>
+            node2.swappedWith !== null &&
+            node2.swappedWith.coords === neighbor.coords
+        );
+        if (swappedNode) {
+          debug("Swapped Node", swappedNode.char, swappedNode.coords);
+          neighbor = swappedNode;
+        }
+        if (neighbor.color === "blue") {
+          blueCount++;
+          blueCleared.push(neighbor.clone());
+        } else if (neighbor.color === "red") {
+          redCount++;
+          redCleared.push(neighbor.clone());
+        } else if (neighbor.color === "very_blue") {
+          blueCount++;
+        } else if (neighbor.color === "very_red") {
+          redCount++;
+        } else {
+          return false;
+        }
       }
     }
 
