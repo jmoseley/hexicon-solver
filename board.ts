@@ -10,6 +10,7 @@ const EXPECTED_LINE_LENGTHS = [
 ];
 
 const debug = debugFactory("board");
+const debugScore = debugFactory("scoreBoard");
 
 // Graph to represent the hexagonal board
 export class Board {
@@ -117,28 +118,28 @@ export class Board {
   // Count the hexagons in the board. This can also use the given word
   // to calculate the result as if that word had been played. The word
   // nodes should not be nodes that are already in the board.
-  countHexagons(word?: Word): {
-    redCount: number;
-    blueCount: number;
-    redCleared: number;
-    blueCleared: number;
-  } {
-    debug("Board");
-    debug(printBoard(this, word));
-    let redCount = 0;
-    let blueCount = 0;
+  scoreBoard(word?: Word) {
+    debugScore("scoreBoard");
+    debugScore(printBoard(this, word));
+    let redHexagonCount = 0;
+    let blueHexagonCount = 0;
     let blueCleared: Set<string> = new Set();
     let redCleared: Set<string> = new Set();
+    let blueSquaresRemaining = 0;
+    let redSquaresRemaining = 0;
+
+    const hexagonCenters = [] as { color: "red" | "blue"; node: BoardNode }[];
     for (const line of this.nodes) {
       for (const node of line) {
         const hexagonResult = node.isCenterOfHexagon(word);
 
         if (hexagonResult) {
+          hexagonCenters.push({ node, color: hexagonResult.color });
           if (hexagonResult.color === "red") {
-            redCount++;
+            redHexagonCount++;
           }
           if (hexagonResult.color === "blue") {
-            blueCount++;
+            blueHexagonCount++;
           }
           hexagonResult.blueCleared.forEach((node) =>
             blueCleared.add(JSON.stringify(node.coords))
@@ -149,12 +150,39 @@ export class Board {
         }
       }
     }
+
+    // Clear all the nodes from the hexagons
+    for (const center of hexagonCenters) {
+      center.node.clearForHexagon(center.color);
+    }
+    debugScore("cleared", printBoard(this));
+
+    // Count the remaining squares
+    for (const line of this.nodes) {
+      for (const node of line) {
+        if (node.color === "red" || node.color === "very_red") {
+          redSquaresRemaining++;
+        }
+        if (node.color === "blue" || node.color === "very_blue") {
+          blueSquaresRemaining++;
+        }
+      }
+    }
+
     return {
-      redCount,
-      blueCount,
+      redHexagonCount,
+      blueHexagonCount,
       blueCleared: blueCleared.size,
       redCleared: redCleared.size,
+      blueSquaresRemaining,
+      redSquaresRemaining,
     };
+  }
+
+  clone() {
+    return Board.createFromNodes(
+      this.nodes.map((line) => line.map((node) => node.clone()))
+    );
   }
 }
 
@@ -199,6 +227,32 @@ export class BoardNode {
     this.coords = coords;
   }
 
+  getColor(word?: Word): Color | undefined {
+    const wordNode = word?.findNode(this);
+    if (wordNode) {
+      if (wordNode.color === "very_blue") return "very_blue";
+      if (wordNode.color === "very_red") throw new Error("invalid word node");
+      return "blue";
+    }
+
+    return this.color;
+  }
+
+  clearForHexagon(hexagonColor: "blue" | "red") {
+    if (hexagonColor === "red") {
+      this.color = "very_red";
+    }
+    if (hexagonColor === "blue") {
+      this.color = "very_blue";
+    }
+
+    for (const neighbor of this.neighbors) {
+      if (neighbor.getColor() === "red" || neighbor.getColor() === "blue") {
+        neighbor.color = "none";
+      }
+    }
+  }
+
   isCenterOfHexagon(word?: Word):
     | {
         redCleared: BoardNode[];
@@ -219,7 +273,7 @@ export class BoardNode {
       return false;
     }
 
-    const centerWordNode = word?.containsNode(this);
+    const centerWordNode = word?.findNode(this);
 
     // Fixed squares can't be the center of hexagons, nor squares with no color.
     if (
@@ -247,16 +301,12 @@ export class BoardNode {
 
     for (let neighbor of this.neighbors) {
       debug("neighbor", neighbor.char, neighbor.coords, neighbor.color);
-      const wordNode = word?.containsNode(neighbor);
+      const wordNode = word?.findNode(neighbor);
       if (wordNode) {
         debug("Word Node", wordNode.char, wordNode.coords, wordNode.color);
         blueCount++;
       } else {
-        const swappedNode = word?.find(
-          (node2) =>
-            node2.swappedWith !== null &&
-            node2.swappedWith.coords === neighbor.coords
-        );
+        const swappedNode = word?.findSwappedNode(neighbor);
         if (swappedNode?.swappedWith) {
           debug("Swapped Node", swappedNode.char, swappedNode.coords);
           neighbor = swappedNode.swappedWith;
@@ -321,8 +371,14 @@ export class Word {
     return this.nodes.map((node) => node.char).join("");
   }
 
-  containsNode(node: BoardNode) {
-    return this.nodes.find((n) => n.coords === node.coords);
+  findNode(node: BoardNode) {
+    return this.nodes.find((n) => compareCoords(n, node));
+  }
+
+  findSwappedNode(node: BoardNode) {
+    return this.nodes.find(
+      (n) => n.swappedWith && compareCoords(n.swappedWith, node)
+    );
   }
 
   isStart(node: BoardNode) {
@@ -336,4 +392,10 @@ export class Word {
   find(fn: (node: BoardNode) => boolean) {
     return this.nodes.find(fn);
   }
+}
+
+function compareCoords(node1: BoardNode, node2: BoardNode) {
+  return (
+    node1.coords[0] === node2.coords[0] && node1.coords[1] === node2.coords[1]
+  );
 }

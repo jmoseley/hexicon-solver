@@ -1,50 +1,90 @@
 import { Board, Word } from "./board";
 
+interface SortedResult {
+  word: Word;
+  blueHexagonCount: number;
+  redHexagonCount: number;
+  redCleared: number;
+  blueCleared: number;
+  redSquaresRemaining: number;
+  blueSquaresRemaining: number;
+}
+
 // Sort each word by the number of hexagons that the board contains
-export function sortWords(board: Board, words: Word[]) {
+export function sortByMaxHexagons(board: Board, words: Word[]): SortedResult[] {
   return words
     .map((w) => {
-      const result = board.countHexagons(w);
+      const result = board.clone().scoreBoard(w);
       return {
         word: w,
-        blueHexagons: result.blueCount,
-        redHexagons: result.redCount,
-        redCleared: result.redCleared,
-        blueCleared: result.blueCleared,
+        ...result,
       };
     })
-    .sort((a, b) => {
-      // Sort by the difference in red and blue hexagons
-      if (a.blueHexagons > b.blueHexagons) {
-        return -1;
-      }
-      if (a.blueHexagons < b.blueHexagons) {
-        return 1;
-      }
+    .sort(sortByHexagonCount);
+}
 
-      // Sort by the max number of red squares cleared
-      if (a.redCleared > b.redCleared) {
-        return -1;
-      }
-      if (a.redCleared < b.redCleared) {
-        return 1;
-      }
+export function sortByMaxBlueSquares(
+  board: Board,
+  words: Word[]
+): SortedResult[] {
+  return words
+    .map((w) => {
+      const result = board.clone().scoreBoard(w);
 
-      // Sort by the minimum number of blue squares cleared
-      if (a.blueCleared < b.blueCleared) {
-        return -1;
-      }
-      if (a.blueCleared > b.blueCleared) {
-        return 1;
-      }
+      return {
+        word: w,
+        ...result,
+      };
+    })
+    .sort(sortBySquaresRemaining);
+}
 
-      // Sort by word length
-      if (a.word.length > b.word.length) {
-        return -1;
-      }
-      if (a.word.length < b.word.length) {
-        return 1;
-      }
-      return 0;
-    });
+function sortBySquaresRemaining(a: SortedResult, b: SortedResult) {
+  // Sort by the difference in red and blue hexagons
+  if (a.blueSquaresRemaining > b.blueSquaresRemaining) {
+    return -1;
+  }
+  if (a.blueSquaresRemaining < b.blueSquaresRemaining) {
+    return 1;
+  }
+  if (a.redSquaresRemaining > b.blueSquaresRemaining) {
+    return 1;
+  }
+  if (a.redSquaresRemaining < b.redSquaresRemaining) {
+    return -1;
+  }
+
+  return sortByHexagonCount(a, b);
+}
+
+function sortByHexagonCount(a: SortedResult, b: SortedResult) {
+  // Sort by the difference in red and blue hexagons
+  if (a.blueHexagonCount > b.blueHexagonCount) {
+    return -1;
+  }
+  if (a.blueHexagonCount < b.blueHexagonCount) {
+    return 1;
+  }
+
+  if (a.blueSquaresRemaining > b.blueSquaresRemaining) {
+    return -1;
+  }
+  if (a.blueSquaresRemaining < b.blueSquaresRemaining) {
+    return 1;
+  }
+  if (a.redSquaresRemaining > b.blueSquaresRemaining) {
+    return 1;
+  }
+  if (a.redSquaresRemaining < b.redSquaresRemaining) {
+    return -1;
+  }
+
+  // Sort by word length
+  if (a.word.length > b.word.length) {
+    return -1;
+  }
+  if (a.word.length < b.word.length) {
+    return 1;
+  }
+  return 0;
 }
