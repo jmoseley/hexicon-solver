@@ -6,10 +6,12 @@ export function printBoard(
   board: Board,
   word?: Word,
   score?: {
-    redHexagons: number;
-    blueHexagons: number;
+    redHexagonCount: number;
+    blueHexagonCount: number;
     redCleared: number;
     blueCleared: number;
+    redSquaresRemaining: number;
+    blueSquaresRemaining: number;
   }
 ) {
   const letters = [] as string[];
@@ -17,7 +19,7 @@ export function printBoard(
   for (const boardLine of board.nodes) {
     for (const node of boardLine) {
       if (word) {
-        const wordNode = word.containsNode(node);
+        const wordNode = word.findNode(node);
         if (wordNode) {
           if (word.isStart(wordNode)) {
             letters.push(renderNodeGreen(wordNode, true));
@@ -45,7 +47,7 @@ export function printBoard(
   return boardFromTemplate(
     letters,
     word?.toString(),
-    `Hexagons: R: ${score?.redHexagons} B: ${score?.blueHexagons} Squares Cleared: R: ${score?.redCleared} B: ${score?.blueCleared}`
+    `Hexagons: R: ${score?.redHexagonCount} B: ${score?.blueHexagonCount} Remaining: R: ${score?.redSquaresRemaining} B: ${score?.blueSquaresRemaining}`
   );
 }
 

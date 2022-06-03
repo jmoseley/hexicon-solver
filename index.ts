@@ -1,10 +1,10 @@
-import { Board } from "./board";
-import { loadWords, question } from "./util";
+import { Board, Word } from "./board";
+import { loadWords } from "./util";
 import { extractTextFromScreenshot } from "./ocr";
 import { findAllWords } from "./solve";
 import { printBoard } from "./format";
 import { extractHexColor } from "./extract_colors";
-import { sortWords } from "./score";
+import * as solve from "./score";
 import yesno from "yesno";
 
 async function main() {
@@ -17,7 +17,7 @@ async function main() {
   const board = await Board.create(text, colors);
   const results = findAllWords(board, dictionary);
 
-  const sorted = sortWords(board, results);
+  const sorted = sortResults(board, results);
 
   for (const { word, ...rest } of sorted) {
     console.info(printBoard(board, word, rest));
@@ -28,6 +28,20 @@ async function main() {
     if (!ok) {
       process.exit(0);
     }
+  }
+}
+
+function sortResults(board: Board, results: Word[]) {
+  const command = process.env.COMMAND || "";
+
+  switch (command) {
+    case "":
+    case "solve":
+      return solve.sortByMaxHexagons(board, results);
+    case "grow":
+      return solve.sortByMaxBlueSquares(board, results);
+    default:
+      throw new Error(`Unknown command: ${command}`);
   }
 }
 
