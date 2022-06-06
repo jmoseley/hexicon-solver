@@ -12,6 +12,17 @@ const EXPECTED_LINE_LENGTHS = [
 const debug = debugFactory("board");
 const debugScore = debugFactory("scoreBoard");
 
+export interface BoardScore {
+  board: Board;
+  word: Word;
+  blueHexagonCount: number;
+  redHexagonCount: number;
+  redCleared: number;
+  blueCleared: number;
+  redSquaresRemaining: number;
+  blueSquaresRemaining: number;
+}
+
 // Graph to represent the hexagonal board
 export class Board {
   constructor(public nodes: BoardNode[][]) {}
@@ -116,40 +127,19 @@ export class Board {
   }
 
   // Count the hexagons in the board. This mutates the board, so should only
-  // be called on a fresh .clone().
-  scoreBoard(word?: Word) {
-    debugScore("scoreBoard", word?.toString());
-
-    // Integrate the word with the board.
-    if (word) {
-      for (const node of word.nodes) {
-        debugScore("word node", node.char, node.coords);
-        let boardNode = this.nodes[node.coords[0]][node.coords[1]];
-        if (node.amSwapped && node.swappedWith) {
-          const swappedBoardNode =
-            this.nodes[node.swappedWith.coords[0]][node.swappedWith.coords[1]];
-          debugScore(
-            "swappedWith",
-            swappedBoardNode.char,
-            swappedBoardNode.coords
-          );
-          boardNode.swapWith(swappedBoardNode);
-        }
-        debugScore("board node", boardNode.char, boardNode.coords);
-        if (boardNode.color === "none") {
-          boardNode.color = "blue";
-        }
-      }
-    }
-
+  // be called on a fresh .clone(). The board at the end has all the hexagons
+  // cleared.
+  // TODO: Super hexagons.
+  scoreBoard(word: Word): BoardScore {
+    debugScore("scoreBoard", word.toString());
     debugScore(printBoard(this));
 
     let redHexagonCount = 0;
     let blueHexagonCount = 0;
-    let blueCleared: Set<string> = new Set();
-    let redCleared: Set<string> = new Set();
     let blueSquaresRemaining = 0;
     let redSquaresRemaining = 0;
+    let redCleared = 0;
+    let blueCleared = 0;
 
     const hexagonCenters = [] as { color: "red" | "blue"; node: BoardNode }[];
     for (const line of this.nodes) {
@@ -157,28 +147,21 @@ export class Board {
         const hexagonResult = node.isCenterOfHexagon();
 
         if (hexagonResult) {
-          hexagonCenters.push({ node, color: hexagonResult.color });
-          if (hexagonResult.color === "red") {
+          hexagonCenters.push({ node, color: hexagonResult });
+          if (hexagonResult === "red") {
             redHexagonCount++;
           }
-          if (hexagonResult.color === "blue") {
+          if (hexagonResult === "blue") {
             blueHexagonCount++;
           }
-          hexagonResult.blueCleared.forEach((node) =>
-            blueCleared.add(JSON.stringify(node.coords))
-          );
-          hexagonResult.redCleared.forEach((node) =>
-            redCleared.add(JSON.stringify(node.coords))
-          );
+
+          const cleared = node.clearForHexagon(hexagonResult);
+          redCleared += cleared.redCleared;
+          blueCleared += cleared.blueCleared;
         }
       }
     }
 
-    // Clear all the nodes from the hexagons
-    for (const center of hexagonCenters) {
-      debugScore("center", center);
-      center.node.clearForHexagon(center.color);
-    }
     debugScore("cleared", printBoard(this));
 
     // Count the remaining squares
@@ -194,13 +177,22 @@ export class Board {
     }
 
     return {
+      board: this,
+      word,
       redHexagonCount,
       blueHexagonCount,
-      blueCleared: blueCleared.size,
-      redCleared: redCleared.size,
+      blueCleared,
+      redCleared,
       blueSquaresRemaining,
       redSquaresRemaining,
     };
+  }
+
+  getNode(coords: [number, number] | BoardNode) {
+    if (coords instanceof BoardNode) {
+      coords = coords.coords;
+    }
+    return this.nodes[coords[0]][coords[1]];
   }
 
   clone() {
@@ -283,6 +275,9 @@ export class BoardNode {
       this.color = "very_blue";
     }
 
+    let redCleared = 0;
+    let blueCleared = 0;
+
     for (const neighbor of this.neighbors) {
       debugScore(
         "clearing neighbor",
@@ -290,20 +285,23 @@ export class BoardNode {
         neighbor.char,
         neighbor.getColor()
       );
-      if (neighbor.getColor() === "red" || neighbor.getColor() === "blue") {
+      if (neighbor.getColor() === "red") {
+        redCleared++;
+        neighbor.color = "none";
+      } else if (neighbor.getColor() === "blue") {
+        blueCleared++;
         neighbor.color = "none";
       }
     }
+
+    return {
+      redCleared,
+      blueCleared,
+    };
   }
 
-  isCenterOfHexagon():
-    | {
-        redCleared: BoardNode[];
-        blueCleared: BoardNode[];
-        color: "red" | "blue";
-      }
-    | false {
-    debug(
+  isCenterOfHexagon(): "red" | "blue" | false {
+    debugScore(
       "check if center",
       this.char,
       this.coords,
@@ -325,12 +323,10 @@ export class BoardNode {
       return false;
     }
 
-    let redCleared = [] as BoardNode[];
     let redCount = 0;
     let blueCount = 0;
-    let blueCleared = [] as BoardNode[];
 
-    // If the node is blue or red, or its a word node it can be the center of a hexagon
+    // If the node is blue or red it can be the center of a hexagon
     if (this.color === "blue") {
       blueCount++;
     } else if (this.color === "red") {
@@ -340,38 +336,23 @@ export class BoardNode {
     }
 
     for (let neighbor of this.neighbors) {
-      debug("neighbor", neighbor.char, neighbor.coords, neighbor.color);
-      if (neighbor.color === "blue") {
+      debugScore("neighbor", neighbor.char, neighbor.coords, neighbor.color);
+      if (neighbor.color === "blue" || neighbor.color === "very_blue") {
         blueCount++;
-        blueCleared.push(neighbor.clone());
-      } else if (neighbor.color === "red") {
-        redCount++;
-        redCleared.push(neighbor.clone());
-      } else if (neighbor.color === "very_blue") {
-        blueCount++;
-      } else if (neighbor.color === "very_red") {
+      } else if (neighbor.color === "red" || neighbor.color === "very_red") {
         redCount++;
       } else {
         return false;
       }
     }
 
+    debugScore("redCount", redCount, "blueCount", blueCount);
+
     const hexagonColor = redCount > blueCount ? "red" : "blue";
 
-    debug(
-      "redCleared",
-      redCleared.length,
-      "blueCleared",
-      blueCleared.length,
-      "hexagonColor",
-      hexagonColor
-    );
+    debugScore("hexagonColor", hexagonColor);
 
-    return {
-      redCleared,
-      blueCleared,
-      color: hexagonColor,
-    };
+    return hexagonColor;
   }
 
   clone(recurse = true) {

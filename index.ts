@@ -1,4 +1,4 @@
-import { Board, Word } from "./board";
+import { Board, BoardScore, Word } from "./board";
 import { loadWords } from "./util";
 import { extractTextFromScreenshot } from "./ocr";
 import { findAllWords } from "./solve";
@@ -14,13 +14,23 @@ async function main() {
   const text = await extractTextFromScreenshot(screenshot);
   const colors = await extractHexColor(screenshot);
 
-  const board = await Board.create(text, colors);
-  const results = findAllWords(board, dictionary);
+  const parsedBoard = await Board.create(text, colors);
+  const results = findAllWords(parsedBoard, dictionary);
 
-  const sorted = sortResults(board, results);
+  const maxBlueHexagons = results.reduce((acc, result) => {
+    return Math.max(acc, result.blueHexagonCount);
+  }, 0);
+  const maxRedHexagons = results.reduce((acc, result) => {
+    return Math.max(acc, result.redHexagonCount);
+  }, 0);
 
-  for (const { word, ...rest } of sorted) {
-    console.info(printBoard(board, word, rest));
+  console.log(`Max blue hexagons: ${maxBlueHexagons}`);
+  console.log(`Max red hexagons: ${maxRedHexagons}`);
+
+  const sorted = sortResults(results);
+
+  for (const { word, board, ...rest } of sorted) {
+    console.info(printBoard(parsedBoard, word, rest));
     const ok = await yesno({
       question: "More?",
       defaultValue: true,
@@ -31,15 +41,15 @@ async function main() {
   }
 }
 
-function sortResults(board: Board, results: Word[]) {
+function sortResults(results: BoardScore[]) {
   const command = process.env.COMMAND || "";
 
   switch (command) {
     case "":
     case "solve":
-      return solve.sortByMaxHexagons(board, results);
+      return results.sort(solve.sortByHexagonCount);
     case "grow":
-      return solve.sortByMaxBlueSquares(board, results);
+      return results.sort(solve.sortBySquaresRemaining);
     default:
       throw new Error(`Unknown command: ${command}`);
   }

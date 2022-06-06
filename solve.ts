@@ -1,20 +1,20 @@
 import debugFactory from "debug";
 
-import { Board, BoardNode, Word } from "./board";
+import { Board, BoardNode, BoardScore, Word } from "./board";
 import { printBoard } from "./format";
 import { Trie } from "./trie";
 
 const debug = debugFactory("solve");
 
 export function findAllWords(board: Board, dictionary: Trie) {
-  const words = [] as ReturnType<typeof getWords>;
+  const words = [] as ReturnType<typeof getScoredWords>;
   for (const line of board.nodes) {
     for (const node of line) {
       if (node.color === "red" || node.color === "very_red") {
         continue;
       }
       debug("Starting at node", node.char, node.coords);
-      words.push(...getWords(board, node, [], dictionary));
+      words.push(...getScoredWords(board, node, [], dictionary));
 
       // Run the search with this node swapped with any of its neighbors
       for (const neighbor of node.neighbors) {
@@ -23,7 +23,7 @@ export function findAllWords(board: Board, dictionary: Trie) {
         }
         node.swapWith(neighbor);
         debug("Starting at swapped node", node.char, node.coords);
-        words.push(...getWords(board, node, [], dictionary, true));
+        words.push(...getScoredWords(board, node, [], dictionary, true));
         node.swapWith(neighbor, true);
       }
     }
@@ -33,51 +33,56 @@ export function findAllWords(board: Board, dictionary: Trie) {
 }
 
 // Recursively find the words in the graph
-function getWords(
+function getScoredWords(
   board: Board,
   node: BoardNode,
   accumulation: BoardNode[],
   dictionary: Trie,
   hasSwapped: boolean = false
-): Word[] {
-  debug(
-    "getWords",
-    hasSwapped,
-    node.char,
-    accumulation.map((node) => node.char).join("")
-  );
-  debug(printBoard(board));
+): BoardScore[] {
+  board = board.clone();
+  node = board.getNode(node);
+  accumulation = [...accumulation];
+
   if (node.used || node.color === "red" || node.color === "very_red") {
     return [];
   }
 
   // Remember to pop and mark as unused before returning
   accumulation.push(node);
-  node.used = true;
-
   const accumulatedString = getStringFromNodes(accumulation);
   // Check if the trie contains the accumulation
   if (!dictionary.containsPrefix(accumulatedString)) {
-    accumulation.pop();
-    node.used = false;
     return [];
   }
 
-  const words = [] as Word[];
-
-  if (dictionary.contains(accumulatedString)) {
-    debug("Found word:", accumulatedString);
-    words.push(new Word(accumulation));
+  node.used = true;
+  if (node.color !== "very_blue") {
+    node.color = "blue";
   }
+
+  debug(
+    "getWords",
+    "hasSwapped",
+    hasSwapped,
+    node.char,
+    accumulation.map((node) => node.char).join("")
+  );
+  debug(printBoard(board));
+
+  const words = [] as BoardScore[];
 
   for (const neighbor of node.neighbors) {
     words.push(
-      ...getWords(board, neighbor, accumulation, dictionary, hasSwapped)
+      ...getScoredWords(
+        board,
+        neighbor,
+        [...accumulation],
+        dictionary,
+        hasSwapped
+      )
     );
   }
-
-  accumulation.pop();
-  node.used = false;
 
   if (!hasSwapped) {
     for (const neighbor of node.neighbors) {
@@ -89,10 +94,27 @@ function getWords(
       ) {
         continue;
       }
-      node.swapWith(neighbor);
-      words.push(...getWords(board, node, accumulation, dictionary, true));
-      node.swapWith(neighbor, true);
+      for (const neighborNeighbor of neighbor.neighbors) {
+        if (
+          neighborNeighbor.used ||
+          neighborNeighbor.color === "very_red" ||
+          neighborNeighbor.color === "very_blue"
+        ) {
+          continue;
+        }
+        neighbor.swapWith(neighborNeighbor);
+        words.push(
+          ...getScoredWords(board, neighbor, accumulation, dictionary, true)
+        );
+        neighbor.swapWith(neighborNeighbor, true);
+      }
     }
+  }
+
+  // Must do this at the end, because scoreBoard mutates the board.
+  if (dictionary.contains(accumulatedString)) {
+    debug("Found word:", accumulatedString);
+    words.push(board.scoreBoard(new Word(accumulation)));
   }
 
   return words;
