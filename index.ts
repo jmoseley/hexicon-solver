@@ -15,7 +15,7 @@ async function main() {
   const colors = await extractHexColor(screenshot);
 
   const parsedBoard = await Board.create(text, colors);
-  const results = findAllWords(parsedBoard, dictionary);
+  const results = findAllWords(parsedBoard, dictionary, "red", 1);
 
   const sorted = sortResults(results);
 

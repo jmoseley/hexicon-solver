@@ -14,6 +14,7 @@ const debugScore = debugFactory("scoreBoard");
 const debugSuper = debugFactory("superhexagon");
 
 export interface BoardScore {
+  probability: number;
   board: Board;
   word: Word;
   blueHexagonCount: number;
@@ -131,7 +132,6 @@ export class Board {
   // Count the hexagons in the board. This mutates the board, so should only
   // be called on a fresh .clone(). The board at the end has all the hexagons
   // cleared.
-  // TODO: Super hexagons.
   scoreBoard(word: Word): BoardScore {
     debugScore("scoreBoard", word.toString());
     debugScore(printBoard(this));
@@ -200,6 +200,7 @@ export class Board {
       blueSquaresRemaining,
       redSquaresRemaining,
       numSuperHexagons,
+      probability: 1,
     };
   }
 
@@ -271,6 +272,24 @@ export class BoardNode {
     return this.getColor();
   }
 
+  isOpposingColor(mover: "red" | "blue") {
+    switch (mover) {
+      case "red":
+        return this.color === "blue" || this.color === "very_blue";
+      case "blue":
+        return this.color === "red" || this.color === "very_red";
+    }
+  }
+
+  isVeryColor(mover: "red" | "blue") {
+    switch (mover) {
+      case "red":
+        return this.color === "very_red";
+      case "blue":
+        return this.color === "very_blue";
+    }
+  }
+
   getColor(word?: Word): Color {
     const wordNode = word?.findNode(this);
     if (wordNode) {
@@ -282,7 +301,7 @@ export class BoardNode {
     return this.nodeColor;
   }
 
-  checkAndClearSuperHexagon() {
+  checkAndClearSuperHexagon(): number | false {
     debugSuper("checkAndClearSuperHexagon", this.coords, this.char, this.color);
     if (this.color !== "very_blue" && this.color !== "very_red") return false;
 
@@ -299,11 +318,12 @@ export class BoardNode {
 
     // This is a superhexagon. Clear it.
     for (const neighbor of this.neighbors) {
-      neighbor.color = "none";
+      neighbor.clear();
     }
-    this.color = "none";
+    this.clear();
 
-    return true;
+    // The number of hexagons cleared
+    return 7;
   }
 
   clearForHexagon(hexagonColor: "blue" | "red") {
@@ -392,6 +412,13 @@ export class BoardNode {
     debugScore("hexagonColor", hexagonColor);
 
     return hexagonColor;
+  }
+
+  clear() {
+    this.color = "none";
+    this.char = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(
+      Math.floor(Math.random() * 26)
+    );
   }
 
   clone(recurse = true) {

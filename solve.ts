@@ -6,15 +6,30 @@ import { Trie } from "./trie";
 
 const debug = debugFactory("solve");
 
-export function findAllWords(board: Board, dictionary: Trie) {
+export function findAllWords(
+  board: Board,
+  dictionary: Trie,
+  mover: "red" | "blue",
+  probability: number
+): BoardScore[] {
   const words = [] as ReturnType<typeof getScoredWords>;
   for (const line of board.nodes) {
     for (const node of line) {
       if (node.color === "red" || node.color === "very_red") {
         continue;
       }
-      debug("Starting at node", node.char, node.coords);
-      words.push(...getScoredWords(board, node, [], dictionary));
+      debug("Starting at node", node.char, node.coords, "turn", mover);
+      words.push(
+        ...getScoredWords(
+          board,
+          node,
+          [],
+          dictionary,
+          mover,
+          probability,
+          false
+        ).map((s) => ({ ...s, probability: s.probability * probability }))
+      );
 
       // Run the search with this node swapped with any of its neighbors
       for (const neighbor of node.neighbors) {
@@ -23,7 +38,17 @@ export function findAllWords(board: Board, dictionary: Trie) {
         }
         node.swapWith(neighbor);
         debug("Starting at swapped node", node.char, node.coords);
-        words.push(...getScoredWords(board, node, [], dictionary, true));
+        words.push(
+          ...getScoredWords(
+            board,
+            node,
+            [],
+            dictionary,
+            mover,
+            probability,
+            true
+          )
+        );
         node.swapWith(neighbor, true);
       }
     }
@@ -38,13 +63,15 @@ function getScoredWords(
   node: BoardNode,
   accumulation: BoardNode[],
   dictionary: Trie,
-  hasSwapped: boolean = false
+  mover: "red" | "blue",
+  probability: number,
+  hasSwapped: boolean
 ): BoardScore[] {
   board = board.clone();
   node = board.getNode(node);
   accumulation = [...accumulation];
 
-  if (node.used || node.color === "red" || node.color === "very_red") {
+  if (node.used || node.isOpposingColor(mover)) {
     return [];
   }
 
@@ -57,8 +84,8 @@ function getScoredWords(
   }
 
   node.used = true;
-  if (node.color !== "very_blue") {
-    node.color = "blue";
+  if (!node.isVeryColor(mover)) {
+    node.color = mover;
   }
 
   debug(
@@ -79,18 +106,19 @@ function getScoredWords(
         neighbor,
         [...accumulation],
         dictionary,
+        mover,
+        probability,
         hasSwapped
       )
     );
   }
 
-  if (!hasSwapped) {
+  if (!hasSwapped && node.color !== "very_red" && node.color !== "very_blue") {
     for (const neighbor of node.neighbors) {
       if (
         neighbor.used ||
         neighbor.color === "very_red" ||
-        neighbor.color === "very_blue" ||
-        node.color === "very_blue"
+        neighbor.color === "very_blue"
       ) {
         continue;
       }
@@ -104,7 +132,15 @@ function getScoredWords(
         }
         neighbor.swapWith(neighborNeighbor);
         words.push(
-          ...getScoredWords(board, neighbor, accumulation, dictionary, true)
+          ...getScoredWords(
+            board,
+            neighbor,
+            accumulation,
+            dictionary,
+            mover,
+            probability,
+            true
+          )
         );
         neighbor.swapWith(neighborNeighbor, true);
       }
