@@ -11,6 +11,7 @@ const EXPECTED_LINE_LENGTHS = [
 
 const debug = debugFactory("board");
 const debugScore = debugFactory("scoreBoard");
+const debugSuper = debugFactory("superhexagon");
 
 export interface BoardScore {
   board: Board;
@@ -21,6 +22,7 @@ export interface BoardScore {
   blueCleared: number;
   redSquaresRemaining: number;
   blueSquaresRemaining: number;
+  numSuperHexagons: number;
 }
 
 // Graph to represent the hexagonal board
@@ -164,6 +166,16 @@ export class Board {
       blueCleared += cleared.blueCleared;
     }
 
+    let numSuperHexagons = 0;
+    // Super hexagons
+    for (const line of this.nodes) {
+      for (const node of line) {
+        if (node.checkAndClearSuperHexagon()) {
+          numSuperHexagons++;
+        }
+      }
+    }
+
     debugScore("cleared", printBoard(this));
 
     // Count the remaining squares
@@ -187,6 +199,7 @@ export class Board {
       redCleared,
       blueSquaresRemaining,
       redSquaresRemaining,
+      numSuperHexagons,
     };
   }
 
@@ -267,6 +280,30 @@ export class BoardNode {
     }
 
     return this.nodeColor;
+  }
+
+  checkAndClearSuperHexagon() {
+    debugSuper("checkAndClearSuperHexagon", this.coords, this.char, this.color);
+    if (this.color !== "very_blue" && this.color !== "very_red") return false;
+
+    if (this.neighbors.size !== 6) return false;
+
+    for (const neighbor of this.neighbors) {
+      debugSuper("neighbor", neighbor.coords, neighbor.char, neighbor.color);
+      if (neighbor.color !== "very_red" && neighbor.color !== "very_blue") {
+        return false;
+      }
+    }
+
+    debugSuper("clear");
+
+    // This is a superhexagon. Clear it.
+    for (const neighbor of this.neighbors) {
+      neighbor.color = "none";
+    }
+    this.color = "none";
+
+    return true;
   }
 
   clearForHexagon(hexagonColor: "blue" | "red") {
