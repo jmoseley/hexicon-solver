@@ -17,16 +17,6 @@ async function main() {
   const parsedBoard = await Board.create(text, colors);
   const results = findAllWords(parsedBoard, dictionary);
 
-  const maxBlueHexagons = results.reduce((acc, result) => {
-    return Math.max(acc, result.blueHexagonCount);
-  }, 0);
-  const maxRedHexagons = results.reduce((acc, result) => {
-    return Math.max(acc, result.redHexagonCount);
-  }, 0);
-
-  console.log(`Max blue hexagons: ${maxBlueHexagons}`);
-  console.log(`Max red hexagons: ${maxRedHexagons}`);
-
   const sorted = sortResults(results);
 
   for (const { word, board, ...rest } of sorted) {

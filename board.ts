@@ -154,12 +154,14 @@ export class Board {
           if (hexagonResult === "blue") {
             blueHexagonCount++;
           }
-
-          const cleared = node.clearForHexagon(hexagonResult);
-          redCleared += cleared.redCleared;
-          blueCleared += cleared.blueCleared;
         }
       }
+    }
+
+    for (const { node, color } of hexagonCenters) {
+      const cleared = node.clearForHexagon(color);
+      redCleared += cleared.redCleared;
+      blueCleared += cleared.blueCleared;
     }
 
     debugScore("cleared", printBoard(this));

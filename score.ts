@@ -27,14 +27,6 @@ export function sortByHexagonCount(a: BoardScore, b: BoardScore) {
     return 1;
   }
 
-  // Sort by word length
-  if (a.word.length > b.word.length) {
-    return -1;
-  }
-  if (a.word.length < b.word.length) {
-    return 1;
-  }
-
   if (a.blueSquaresRemaining > b.blueSquaresRemaining) {
     return -1;
   }
@@ -47,5 +39,14 @@ export function sortByHexagonCount(a: BoardScore, b: BoardScore) {
   if (a.redSquaresRemaining < b.redSquaresRemaining) {
     return -1;
   }
+
+  // Sort by word length
+  if (a.word.length > b.word.length) {
+    return -1;
+  }
+  if (a.word.length < b.word.length) {
+    return 1;
+  }
+
   return 0;
 }

@@ -68,7 +68,7 @@ function getScoredWords(
     node.char,
     accumulation.map((node) => node.char).join("")
   );
-  debug(printBoard(board));
+  debug(printBoard(board, new Word(accumulation)));
 
   const words = [] as BoardScore[];
 

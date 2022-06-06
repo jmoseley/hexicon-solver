@@ -27,11 +27,7 @@ export function printBoard(
             letters.push(renderNodeGreen(wordNode));
           }
         } else {
-          const swappedNode = word.find(
-            (node2) =>
-              node2.swappedWith !== null &&
-              node2.swappedWith.coords === node.coords
-          );
+          const swappedNode = word.findSwappedNode(node);
           if (swappedNode) {
             letters.push(renderNode(swappedNode.swappedWith!));
           } else {
