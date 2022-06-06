@@ -115,12 +115,35 @@ export class Board {
     return board;
   }
 
-  // Count the hexagons in the board. This can also use the given word
-  // to calculate the result as if that word had been played. The word
-  // nodes should not be nodes that are already in the board.
+  // Count the hexagons in the board. This mutates the board, so should only
+  // be called on a fresh .clone().
   scoreBoard(word?: Word) {
-    debugScore("scoreBoard");
-    debugScore(printBoard(this, word));
+    debugScore("scoreBoard", word?.toString());
+
+    // Integrate the word with the board.
+    if (word) {
+      for (const node of word.nodes) {
+        debugScore("word node", node.char, node.coords);
+        let boardNode = this.nodes[node.coords[0]][node.coords[1]];
+        if (node.amSwapped && node.swappedWith) {
+          const swappedBoardNode =
+            this.nodes[node.swappedWith.coords[0]][node.swappedWith.coords[1]];
+          debugScore(
+            "swappedWith",
+            swappedBoardNode.char,
+            swappedBoardNode.coords
+          );
+          boardNode.swapWith(swappedBoardNode);
+        }
+        debugScore("board node", boardNode.char, boardNode.coords);
+        if (boardNode.color === "none") {
+          boardNode.color = "blue";
+        }
+      }
+    }
+
+    debugScore(printBoard(this));
+
     let redHexagonCount = 0;
     let blueHexagonCount = 0;
     let blueCleared: Set<string> = new Set();
@@ -131,7 +154,7 @@ export class Board {
     const hexagonCenters = [] as { color: "red" | "blue"; node: BoardNode }[];
     for (const line of this.nodes) {
       for (const node of line) {
-        const hexagonResult = node.isCenterOfHexagon(word);
+        const hexagonResult = node.isCenterOfHexagon();
 
         if (hexagonResult) {
           hexagonCenters.push({ node, color: hexagonResult.color });
@@ -153,6 +176,7 @@ export class Board {
 
     // Clear all the nodes from the hexagons
     for (const center of hexagonCenters) {
+      debugScore("center", center);
       center.node.clearForHexagon(center.color);
     }
     debugScore("cleared", printBoard(this));
@@ -192,7 +216,7 @@ export class BoardNode {
   public coords: [number, number] = [-1, -1];
   public amSwapped: boolean = false;
   public swappedWith: BoardNode | null = null;
-  constructor(public char: string, public color?: Color) {}
+  constructor(public char: string, private nodeColor: Color = "none") {}
 
   addNeighbor(node?: BoardNode) {
     if (!node || this.neighbors.has(node)) {
@@ -207,15 +231,20 @@ export class BoardNode {
     this.amSwapped = !backSwap;
     node.amSwapped = !backSwap;
 
-    this.swappedWith = node;
-    node.swappedWith = this;
+    if (!backSwap) {
+      this.swappedWith = node;
+      node.swappedWith = this;
+    } else {
+      this.swappedWith = null;
+      node.swappedWith = null;
+    }
 
     const tempChar = this.char;
     this.char = node.char;
     node.char = tempChar;
 
     const tempColor = this.color;
-    this.color = node.color;
+    this.nodeColor = node.color;
     node.color = tempColor;
 
     const tempUsed = this.used;
@@ -227,7 +256,15 @@ export class BoardNode {
     this.coords = coords;
   }
 
-  getColor(word?: Word): Color | undefined {
+  set color(color: Color) {
+    this.nodeColor = color;
+  }
+
+  get color() {
+    return this.getColor();
+  }
+
+  getColor(word?: Word): Color {
     const wordNode = word?.findNode(this);
     if (wordNode) {
       if (wordNode.color === "very_blue") return "very_blue";
@@ -235,7 +272,7 @@ export class BoardNode {
       return "blue";
     }
 
-    return this.color;
+    return this.nodeColor;
   }
 
   clearForHexagon(hexagonColor: "blue" | "red") {
@@ -247,13 +284,19 @@ export class BoardNode {
     }
 
     for (const neighbor of this.neighbors) {
+      debugScore(
+        "clearing neighbor",
+        neighbor.coords,
+        neighbor.char,
+        neighbor.getColor()
+      );
       if (neighbor.getColor() === "red" || neighbor.getColor() === "blue") {
         neighbor.color = "none";
       }
     }
   }
 
-  isCenterOfHexagon(word?: Word):
+  isCenterOfHexagon():
     | {
         redCleared: BoardNode[];
         blueCleared: BoardNode[];
@@ -273,14 +316,11 @@ export class BoardNode {
       return false;
     }
 
-    const centerWordNode = word?.findNode(this);
-
     // Fixed squares can't be the center of hexagons, nor squares with no color.
     if (
-      (this.color === "very_blue" ||
-        this.color === "very_red" ||
-        this.color === "none") &&
-      !centerWordNode
+      this.color === "very_blue" ||
+      this.color === "very_red" ||
+      this.color === "none"
     ) {
       return false;
     }
@@ -291,7 +331,7 @@ export class BoardNode {
     let blueCleared = [] as BoardNode[];
 
     // If the node is blue or red, or its a word node it can be the center of a hexagon
-    if (this.color === "blue" || centerWordNode) {
+    if (this.color === "blue") {
       blueCount++;
     } else if (this.color === "red") {
       redCount++;
@@ -301,29 +341,18 @@ export class BoardNode {
 
     for (let neighbor of this.neighbors) {
       debug("neighbor", neighbor.char, neighbor.coords, neighbor.color);
-      const wordNode = word?.findNode(neighbor);
-      if (wordNode) {
-        debug("Word Node", wordNode.char, wordNode.coords, wordNode.color);
+      if (neighbor.color === "blue") {
         blueCount++;
+        blueCleared.push(neighbor.clone());
+      } else if (neighbor.color === "red") {
+        redCount++;
+        redCleared.push(neighbor.clone());
+      } else if (neighbor.color === "very_blue") {
+        blueCount++;
+      } else if (neighbor.color === "very_red") {
+        redCount++;
       } else {
-        const swappedNode = word?.findSwappedNode(neighbor);
-        if (swappedNode?.swappedWith) {
-          debug("Swapped Node", swappedNode.char, swappedNode.coords);
-          neighbor = swappedNode.swappedWith;
-        }
-        if (neighbor.color === "blue") {
-          blueCount++;
-          blueCleared.push(neighbor.clone());
-        } else if (neighbor.color === "red") {
-          redCount++;
-          redCleared.push(neighbor.clone());
-        } else if (neighbor.color === "very_blue") {
-          blueCount++;
-        } else if (neighbor.color === "very_red") {
-          redCount++;
-        } else {
-          return false;
-        }
+        return false;
       }
     }
 
