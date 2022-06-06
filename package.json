@@ -5,7 +5,9 @@
   "author": "Jeremy Moseley <jeremy@moseley.dev>",
   "license": "MIT",
   "scripts": {
-    "solve": "ts-node index.ts"
+    "solve": "FORCE_COLOR=true ts-node index.ts",
+    "grow": "FORCE_COLOR=true COMMAND=grow ts-node index.ts",
+    "crop": "ts-node crop.ts"
   },
   "devDependencies": {
     "@types/debug": "^4.1.7",
@@ -16,9 +18,11 @@
     "typescript": "^4.7.2"
   },
   "dependencies": {
+    "chalk": "4.1.2",
     "debug": "^4.3.4",
     "readline": "^1.3.0",
     "sharp": "^0.30.5",
-    "tesseract.js": "^2.1.5"
+    "tesseract.js": "^2.1.5",
+    "yesno": "^0.3.1"
   }
 }
