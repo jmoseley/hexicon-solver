@@ -43,11 +43,11 @@ export class Trie {
     return node.end;
   }
 
-  containsPrefix(prefix: string) {
+  containsPrefix(prefix: string): false | { [key: string]: TrieNode } {
     let node = this.root;
 
     if (prefix.length === 0) {
-      return true;
+      return false;
     }
 
     // for every character in the prefix
@@ -56,12 +56,12 @@ export class Trie {
       if (node.children[prefix[i]]) {
         node = node.children[prefix[i]];
       } else {
-        // there's none. just return it.
+        // there's none. just return false
         return false;
       }
     }
 
-    return true;
+    return node.children;
   }
 
   find(prefix: string) {

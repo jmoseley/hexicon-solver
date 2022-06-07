@@ -6,11 +6,12 @@ import { Trie } from "./trie";
 
 const debug = debugFactory("solve");
 
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
 export function findAllWords(
   board: Board,
   dictionary: Trie,
-  mover: "red" | "blue",
-  probability: number
+  mover: "red" | "blue"
 ): BoardScore[] {
   const words = [] as ReturnType<typeof getScoredWords>;
   for (const line of board.nodes) {
@@ -19,17 +20,20 @@ export function findAllWords(
         continue;
       }
       debug("Starting at node", node.char, node.coords, "turn", mover);
-      words.push(
-        ...getScoredWords(
-          board,
-          node,
-          [],
-          dictionary,
-          mover,
-          probability,
-          false
-        ).map((s) => ({ ...s, probability: s.probability * probability }))
-      );
+      if (node.isCleared) {
+        for (const letter of LETTERS) {
+          node.char = letter;
+          node.isCleared = false;
+          words.push(
+            ...getScoredWords(board, node, [], dictionary, mover, 1 / 26, false)
+          );
+        }
+        node.isCleared = true;
+      } else {
+        words.push(
+          ...getScoredWords(board, node, [], dictionary, mover, 1, false)
+        );
+      }
 
       // Run the search with this node swapped with any of its neighbors
       for (const neighbor of node.neighbors) {
@@ -39,15 +43,7 @@ export function findAllWords(
         node.swapWith(neighbor);
         debug("Starting at swapped node", node.char, node.coords);
         words.push(
-          ...getScoredWords(
-            board,
-            node,
-            [],
-            dictionary,
-            mover,
-            probability,
-            true
-          )
+          ...getScoredWords(board, node, [], dictionary, mover, 1, true)
         );
         node.swapWith(neighbor, true);
       }
@@ -67,70 +63,83 @@ function getScoredWords(
   probability: number,
   hasSwapped: boolean
 ): BoardScore[] {
-  board = board.clone();
-  node = board.getNode(node);
-  accumulation = [...accumulation];
+  if (probability < 0.01) {
+    return [];
+  }
 
   if (node.used || node.isOpposingColor(mover)) {
     return [];
   }
 
-  // Remember to pop and mark as unused before returning
-  accumulation.push(node);
-  const accumulatedString = getStringFromNodes(accumulation);
-  // Check if the trie contains the accumulation
-  if (!dictionary.containsPrefix(accumulatedString)) {
-    return [];
-  }
-
-  node.used = true;
-  if (!node.isVeryColor(mover)) {
-    node.color = mover;
-  }
-
-  debug(
-    "getWords",
-    "hasSwapped",
-    hasSwapped,
-    node.char,
-    accumulation.map((node) => node.char).join("")
-  );
-  debug(printBoard(board, new Word(accumulation)));
-
   const words = [] as BoardScore[];
 
-  for (const neighbor of node.neighbors) {
-    words.push(
-      ...getScoredWords(
-        board,
-        neighbor,
-        [...accumulation],
-        dictionary,
-        mover,
-        probability,
-        hasSwapped
-      )
-    );
-  }
-
-  if (!hasSwapped && node.color !== "very_red" && node.color !== "very_blue") {
-    for (const neighbor of node.neighbors) {
-      if (
-        neighbor.used ||
-        neighbor.color === "very_red" ||
-        neighbor.color === "very_blue"
-      ) {
-        continue;
+  if (!node.isCleared) {
+    let originalColor = node.color;
+    try {
+      accumulation.push(node);
+      node.used = true;
+      if (node.color === "none") {
+        node.color = mover;
       }
-      for (const neighborNeighbor of neighbor.neighbors) {
+
+      const accumulatedString = getStringFromNodes(accumulation);
+      if (dictionary.contains(accumulatedString)) {
+        debug("Found word:", accumulatedString);
+        words.push(
+          Board.scoreBoard(board, new Word(accumulation), probability)
+        );
+      }
+
+      // Check if the trie contains the accumulation
+      const nextLetters = dictionary.containsPrefix(accumulatedString);
+      if (!nextLetters) {
+        return [];
+      }
+
+      debug("getWords", "hasSwapped", hasSwapped, node.char, accumulatedString);
+      debug(printBoard(board, new Word(accumulation)));
+
+      for (const neighbor of node.neighbors) {
         if (
-          neighborNeighbor.used ||
-          neighborNeighbor.color === "very_red" ||
-          neighborNeighbor.color === "very_blue"
+          !hasSwapped &&
+          !neighbor.used &&
+          neighbor.color !== "very_red" &&
+          neighbor.color !== "very_blue"
         ) {
+          for (const neighborNeighbor of neighbor.neighbors) {
+            if (
+              neighborNeighbor.used ||
+              neighborNeighbor.color === "very_red" ||
+              neighborNeighbor.color === "very_blue" ||
+              neighborNeighbor.coords === node.coords
+            ) {
+              continue;
+            }
+
+            if (!nextLetters[neighborNeighbor.char]) {
+              continue;
+            }
+
+            neighbor.swapWith(neighborNeighbor);
+            words.push(
+              ...getScoredWords(
+                board,
+                neighbor,
+                accumulation,
+                dictionary,
+                mover,
+                probability,
+                true
+              )
+            );
+            neighbor.swapWith(neighborNeighbor, true);
+          }
+        }
+
+        if (!nextLetters[neighbor.char]) {
           continue;
         }
-        neighbor.swapWith(neighborNeighbor);
+
         words.push(
           ...getScoredWords(
             board,
@@ -139,18 +148,37 @@ function getScoredWords(
             dictionary,
             mover,
             probability,
-            true
+            hasSwapped
           )
         );
-        neighbor.swapWith(neighborNeighbor, true);
       }
+    } finally {
+      node.used = false;
+      node.color = originalColor;
+      accumulation.pop();
     }
-  }
+  } else {
+    debug("node isCleared", node.char, node.coords);
 
-  // Must do this at the end, because scoreBoard mutates the board.
-  if (dictionary.contains(accumulatedString)) {
-    debug("Found word:", accumulatedString);
-    words.push(board.scoreBoard(new Word(accumulation)));
+    const originalChar = node.char;
+    for (const letter of LETTERS) {
+      node.char = letter;
+      node.isCleared = false;
+
+      words.push(
+        ...getScoredWords(
+          board,
+          node,
+          accumulation,
+          dictionary,
+          mover,
+          probability * (1 / 26),
+          hasSwapped
+        )
+      );
+    }
+    node.char = originalChar;
+    node.isCleared = true;
   }
 
   return words;

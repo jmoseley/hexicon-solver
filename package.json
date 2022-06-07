@@ -5,8 +5,9 @@
   "author": "Jeremy Moseley <jeremy@moseley.dev>",
   "license": "MIT",
   "scripts": {
-    "solve": "FORCE_COLOR=true ts-node index.ts",
-    "grow": "FORCE_COLOR=true COMMAND=grow ts-node index.ts",
+    "solve": "ts-node index.ts",
+    "grow": "COMMAND=grow ts-node index.ts",
+    "minimax": "COMMAND=minimax ts-node index.ts",
     "crop": "ts-node crop.ts"
   },
   "devDependencies": {

@@ -132,9 +132,10 @@ export class Board {
   // Count the hexagons in the board. This mutates the board, so should only
   // be called on a fresh .clone(). The board at the end has all the hexagons
   // cleared.
-  scoreBoard(word: Word): BoardScore {
+  static scoreBoard(board: Board, word: Word, probability: number): BoardScore {
+    board = board.clone();
     debugScore("scoreBoard", word.toString());
-    debugScore(printBoard(this));
+    debugScore(printBoard(board));
 
     let redHexagonCount = 0;
     let blueHexagonCount = 0;
@@ -144,7 +145,7 @@ export class Board {
     let blueCleared = 0;
 
     const hexagonCenters = [] as { color: "red" | "blue"; node: BoardNode }[];
-    for (const line of this.nodes) {
+    for (const line of board.nodes) {
       for (const node of line) {
         const hexagonResult = node.isCenterOfHexagon();
 
@@ -168,7 +169,7 @@ export class Board {
 
     let numSuperHexagons = 0;
     // Super hexagons
-    for (const line of this.nodes) {
+    for (const line of board.nodes) {
       for (const node of line) {
         if (node.checkAndClearSuperHexagon()) {
           numSuperHexagons++;
@@ -176,10 +177,10 @@ export class Board {
       }
     }
 
-    debugScore("cleared", printBoard(this));
+    debugScore("cleared", printBoard(board));
 
     // Count the remaining squares
-    for (const line of this.nodes) {
+    for (const line of board.nodes) {
       for (const node of line) {
         if (node.color === "red" || node.color === "very_red") {
           redSquaresRemaining++;
@@ -191,7 +192,7 @@ export class Board {
     }
 
     return {
-      board: this,
+      board,
       word,
       redHexagonCount,
       blueHexagonCount,
@@ -200,7 +201,7 @@ export class Board {
       blueSquaresRemaining,
       redSquaresRemaining,
       numSuperHexagons,
-      probability: 1,
+      probability,
     };
   }
 
@@ -219,20 +220,23 @@ export class Board {
 }
 
 export class BoardNode {
-  public neighbors = new Set<BoardNode>();
+  public neighbors = [] as BoardNode[];
   public used = false;
   public coords: [number, number] = [-1, -1];
   public amSwapped: boolean = false;
   public swappedWith: BoardNode | null = null;
+  public isCleared: boolean = false;
   constructor(public char: string, private nodeColor: Color = "none") {}
 
-  addNeighbor(node?: BoardNode) {
-    if (!node || this.neighbors.has(node)) {
+  addNeighbor(node?: BoardNode, skipBackLink = false) {
+    if (!node) {
       return;
     }
 
-    this.neighbors.add(node);
-    node.addNeighbor(this);
+    this.neighbors.push(node);
+    if (!skipBackLink) {
+      node.addNeighbor(this, true);
+    }
   }
 
   swapWith(node: BoardNode, backSwap: boolean = false) {
@@ -258,6 +262,10 @@ export class BoardNode {
     const tempUsed = this.used;
     this.used = node.used;
     node.used = tempUsed;
+
+    const tempIsCleared = this.isCleared;
+    this.isCleared = node.isCleared;
+    node.isCleared = tempIsCleared;
   }
 
   setCoords(coords: [number, number]) {
@@ -281,15 +289,6 @@ export class BoardNode {
     }
   }
 
-  isVeryColor(mover: "red" | "blue") {
-    switch (mover) {
-      case "red":
-        return this.color === "very_red";
-      case "blue":
-        return this.color === "very_blue";
-    }
-  }
-
   getColor(word?: Word): Color {
     const wordNode = word?.findNode(this);
     if (wordNode) {
@@ -305,7 +304,7 @@ export class BoardNode {
     debugSuper("checkAndClearSuperHexagon", this.coords, this.char, this.color);
     if (this.color !== "very_blue" && this.color !== "very_red") return false;
 
-    if (this.neighbors.size !== 6) return false;
+    if (this.neighbors.length !== 6) return false;
 
     for (const neighbor of this.neighbors) {
       debugSuper("neighbor", neighbor.coords, neighbor.char, neighbor.color);
@@ -346,10 +345,10 @@ export class BoardNode {
       );
       if (neighbor.getColor() === "red") {
         redCleared++;
-        neighbor.color = "none";
+        neighbor.clear();
       } else if (neighbor.getColor() === "blue") {
         blueCleared++;
-        neighbor.color = "none";
+        neighbor.clear();
       }
     }
 
@@ -365,11 +364,11 @@ export class BoardNode {
       this.char,
       this.coords,
       this.color,
-      this.neighbors.size
+      this.neighbors.length
     );
 
     // Cannot be the center of the hexagon if it has less than 6 neighbors
-    if (this.neighbors.size !== 6) {
+    if (this.neighbors.length !== 6) {
       return false;
     }
 
@@ -416,9 +415,7 @@ export class BoardNode {
 
   clear() {
     this.color = "none";
-    this.char = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(
-      Math.floor(Math.random() * 26)
-    );
+    this.isCleared = true;
   }
 
   clone(recurse = true) {
