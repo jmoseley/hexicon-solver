@@ -2,6 +2,7 @@ import debugFactory from "debug";
 
 import { Board, BoardNode, BoardScore, Word } from "./board";
 import { printBoard } from "./format";
+import { scoreBoard } from "./score";
 import { Trie } from "./trie";
 
 const debug = debugFactory("solve");
@@ -19,11 +20,12 @@ export function findAllWords(
       if (node.color === "red" || node.color === "very_red") {
         continue;
       }
-      debug("Starting at node", node.char, node.coords, "turn", mover);
+      if (debug.enabled)
+        debug("Starting at node", node.char, node.coords, "turn", mover);
       if (node.isCleared) {
+        node.isCleared = false;
         for (const letter of LETTERS) {
           node.char = letter;
-          node.isCleared = false;
           words.push(
             ...getScoredWords(board, node, [], dictionary, mover, 1 / 26, false)
           );
@@ -37,11 +39,16 @@ export function findAllWords(
 
       // Run the search with this node swapped with any of its neighbors
       for (const neighbor of node.neighbors) {
-        if (neighbor.color === "very_red" || neighbor.color === "very_blue") {
+        if (
+          neighbor.color === "very_red" ||
+          neighbor.color === "very_blue" ||
+          node.color === "very_blue"
+        ) {
           continue;
         }
         node.swapWith(neighbor);
-        debug("Starting at swapped node", node.char, node.coords);
+        if (debug.enabled)
+          debug("Starting at swapped node", node.char, node.coords);
         words.push(
           ...getScoredWords(board, node, [], dictionary, mover, 1, true)
         );
@@ -84,10 +91,8 @@ function getScoredWords(
 
       const accumulatedString = getStringFromNodes(accumulation);
       if (dictionary.contains(accumulatedString)) {
-        debug("Found word:", accumulatedString);
-        words.push(
-          Board.scoreBoard(board, new Word(accumulation), probability)
-        );
+        if (debug.enabled) debug("Found word:", accumulatedString);
+        words.push(scoreBoard(board, new Word(accumulation), probability));
       }
 
       // Check if the trie contains the accumulation
@@ -96,8 +101,15 @@ function getScoredWords(
         return [];
       }
 
-      debug("getWords", "hasSwapped", hasSwapped, node.char, accumulatedString);
-      debug(printBoard(board, new Word(accumulation)));
+      if (debug.enabled)
+        debug(
+          "getWords",
+          "hasSwapped",
+          hasSwapped,
+          node.char,
+          accumulatedString
+        );
+      if (debug.enabled) debug(printBoard(board, new Word(accumulation)));
 
       for (const neighbor of node.neighbors) {
         if (
@@ -158,12 +170,12 @@ function getScoredWords(
       accumulation.pop();
     }
   } else {
-    debug("node isCleared", node.char, node.coords);
+    if (debug.enabled) debug("node isCleared", node.char, node.coords);
 
     const originalChar = node.char;
+    node.isCleared = false;
     for (const letter of LETTERS) {
       node.char = letter;
-      node.isCleared = false;
 
       words.push(
         ...getScoredWords(

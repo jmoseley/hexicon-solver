@@ -29,7 +29,9 @@ export function printBoard(
         } else {
           const swappedNode = word.findSwappedNode(node);
           if (swappedNode) {
-            letters.push(renderNode(swappedNode.swappedWith!));
+            const boardNode = board.getNode(swappedNode);
+            boardNode.swappedWith = swappedNode.coords;
+            letters.push(renderNode(boardNode));
           } else {
             letters.push(renderNode(node));
           }

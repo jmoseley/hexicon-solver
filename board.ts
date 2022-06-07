@@ -26,6 +26,8 @@ export interface BoardScore {
   numSuperHexagons: number;
 }
 
+type Coords = [number, number];
+
 // Graph to represent the hexagonal board
 export class Board {
   constructor(public nodes: BoardNode[][]) {}
@@ -33,7 +35,7 @@ export class Board {
   static async create(text: string, colors: Color[]) {
     // validate the text input first
     const linesRaw = text.split("\n").filter((line) => line.length > 0);
-    debug("linesRaw", linesRaw);
+    if (debug.enabled) debug("linesRaw", linesRaw);
     if (linesRaw.length !== EXPECTED_LINE_LENGTHS.length) {
       throw new Error(
         `Expected ${EXPECTED_LINE_LENGTHS.length} lines, got ${linesRaw.length}`
@@ -48,7 +50,7 @@ export class Board {
       const line = lineStr.split("").filter((word) => word.trim().length > 0);
 
       if (line.length !== EXPECTED_LINE_LENGTHS[idx]) {
-        console.log(
+        console.info(
           `Line ${idx} is ${line.length} characters long, expected ${EXPECTED_LINE_LENGTHS[idx]}.`
         );
 
@@ -69,7 +71,7 @@ export class Board {
       }
     }
 
-    debug("lines", lines);
+    if (debug.enabled) debug("lines", lines);
 
     const nodes = lines.map((line, lineNum) =>
       line.map(({ char, color }) => new BoardNode(char, color))
@@ -82,127 +84,63 @@ export class Board {
     const board = new Board(nodes);
 
     for (const [lineNum, line] of nodes.entries()) {
-      debug("lineNum", lineNum);
+      if (debug.enabled) debug("lineNum", lineNum);
       for (const [nodeNum, node] of line.entries()) {
         node.setCoords([lineNum, nodeNum]);
-        debug("For node: ", node.char);
+        if (debug.enabled) debug("For node: ", node.char);
 
         // This is the upper area
         if (lineNum < 3) {
           node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-          debug(`1. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
+          if (debug.enabled)
+            debug(`1. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
           node.addNeighbor(nodes[lineNum + 1]?.[nodeNum + 1]);
-          debug(`2. Added ${nodes[lineNum + 1]?.[nodeNum + 1]?.char}`);
+          if (debug.enabled)
+            debug(`2. Added ${nodes[lineNum + 1]?.[nodeNum + 1]?.char}`);
           node.addNeighbor(nodes[lineNum + 2]?.[nodeNum + 1]);
-          debug(`3. Added ${nodes[lineNum + 2]?.[nodeNum + 1]?.char}`);
+          if (debug.enabled)
+            debug(`3. Added ${nodes[lineNum + 2]?.[nodeNum + 1]?.char}`);
         }
         // this is the mid area
         else if (lineNum < 12) {
           if (line.length === 4) {
             node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-            debug(`1. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
+            if (debug.enabled)
+              debug(`1. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
             node.addNeighbor(nodes[lineNum + 1]?.[nodeNum + 1]);
-            debug(`2. Added ${nodes[lineNum + 1][nodeNum + 1]?.char}`);
+            if (debug.enabled)
+              debug(`2. Added ${nodes[lineNum + 1][nodeNum + 1]?.char}`);
             node.addNeighbor(nodes[lineNum + 2]?.[nodeNum]);
-            debug(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
+            if (debug.enabled)
+              debug(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
           } else {
             node.addNeighbor(nodes[lineNum + 1]?.[nodeNum - 1]);
-            debug(`1. Added ${nodes[lineNum + 1][nodeNum - 1]?.char}`);
+            if (debug.enabled)
+              debug(`1. Added ${nodes[lineNum + 1][nodeNum - 1]?.char}`);
             node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-            debug(`2. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
+            if (debug.enabled)
+              debug(`2. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
             node.addNeighbor(nodes[lineNum + 2]?.[nodeNum]);
-            debug(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
+            if (debug.enabled)
+              debug(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
           }
         }
         // this is the lower area
         else {
           node.addNeighbor(nodes[lineNum + 1]?.[nodeNum - 1]);
-          debug(`1. Added ${nodes[lineNum + 1]?.[nodeNum - 1]?.char}`);
+          if (debug.enabled)
+            debug(`1. Added ${nodes[lineNum + 1]?.[nodeNum - 1]?.char}`);
           node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-          debug(`2. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
+          if (debug.enabled)
+            debug(`2. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
           node.addNeighbor(nodes[lineNum + 2]?.[nodeNum - 1]);
-          debug(`3. Added ${nodes[lineNum + 2]?.[nodeNum - 1]?.char}`);
+          if (debug.enabled)
+            debug(`3. Added ${nodes[lineNum + 2]?.[nodeNum - 1]?.char}`);
         }
       }
     }
 
     return board;
-  }
-
-  // Count the hexagons in the board. This mutates the board, so should only
-  // be called on a fresh .clone(). The board at the end has all the hexagons
-  // cleared.
-  static scoreBoard(board: Board, word: Word, probability: number): BoardScore {
-    board = board.clone();
-    debugScore("scoreBoard", word.toString());
-    debugScore(printBoard(board));
-
-    let redHexagonCount = 0;
-    let blueHexagonCount = 0;
-    let blueSquaresRemaining = 0;
-    let redSquaresRemaining = 0;
-    let redCleared = 0;
-    let blueCleared = 0;
-
-    const hexagonCenters = [] as { color: "red" | "blue"; node: BoardNode }[];
-    for (const line of board.nodes) {
-      for (const node of line) {
-        const hexagonResult = node.isCenterOfHexagon();
-
-        if (hexagonResult) {
-          hexagonCenters.push({ node, color: hexagonResult });
-          if (hexagonResult === "red") {
-            redHexagonCount++;
-          }
-          if (hexagonResult === "blue") {
-            blueHexagonCount++;
-          }
-        }
-      }
-    }
-
-    for (const { node, color } of hexagonCenters) {
-      const cleared = node.clearForHexagon(color);
-      redCleared += cleared.redCleared;
-      blueCleared += cleared.blueCleared;
-    }
-
-    let numSuperHexagons = 0;
-    // Super hexagons
-    for (const line of board.nodes) {
-      for (const node of line) {
-        if (node.checkAndClearSuperHexagon()) {
-          numSuperHexagons++;
-        }
-      }
-    }
-
-    debugScore("cleared", printBoard(board));
-
-    // Count the remaining squares
-    for (const line of board.nodes) {
-      for (const node of line) {
-        if (node.color === "red" || node.color === "very_red") {
-          redSquaresRemaining++;
-        }
-        if (node.color === "blue" || node.color === "very_blue") {
-          blueSquaresRemaining++;
-        }
-      }
-    }
-
-    return {
-      board,
-      word,
-      redHexagonCount,
-      blueHexagonCount,
-      blueCleared,
-      redCleared,
-      blueSquaresRemaining,
-      redSquaresRemaining,
-      numSuperHexagons,
-      probability,
-    };
   }
 
   getNode(coords: [number, number] | BoardNode) {
@@ -223,8 +161,7 @@ export class BoardNode {
   public neighbors = [] as BoardNode[];
   public used = false;
   public coords: [number, number] = [-1, -1];
-  public amSwapped: boolean = false;
-  public swappedWith: BoardNode | null = null;
+  public swappedWith: [number, number] | null = null;
   public isCleared: boolean = false;
   constructor(public char: string, private nodeColor: Color = "none") {}
 
@@ -239,13 +176,14 @@ export class BoardNode {
     }
   }
 
-  swapWith(node: BoardNode, backSwap: boolean = false) {
-    this.amSwapped = !backSwap;
-    node.amSwapped = !backSwap;
+  get amSwapped() {
+    return this.swappedWith !== null;
+  }
 
+  swapWith(node: BoardNode, backSwap: boolean = false) {
     if (!backSwap) {
-      this.swappedWith = node;
-      node.swappedWith = this;
+      this.swappedWith = node.coords;
+      node.swappedWith = this.coords;
     } else {
       this.swappedWith = null;
       node.swappedWith = null;
@@ -301,19 +239,26 @@ export class BoardNode {
   }
 
   checkAndClearSuperHexagon(): number | false {
-    debugSuper("checkAndClearSuperHexagon", this.coords, this.char, this.color);
+    if (debugSuper.enabled)
+      debugSuper(
+        "checkAndClearSuperHexagon",
+        this.coords,
+        this.char,
+        this.color
+      );
     if (this.color !== "very_blue" && this.color !== "very_red") return false;
 
     if (this.neighbors.length !== 6) return false;
 
     for (const neighbor of this.neighbors) {
-      debugSuper("neighbor", neighbor.coords, neighbor.char, neighbor.color);
+      if (debugSuper.enabled)
+        debugSuper("neighbor", neighbor.coords, neighbor.char, neighbor.color);
       if (neighbor.color !== "very_red" && neighbor.color !== "very_blue") {
         return false;
       }
     }
 
-    debugSuper("clear");
+    if (debugSuper.enabled) debugSuper("clear");
 
     // This is a superhexagon. Clear it.
     for (const neighbor of this.neighbors) {
@@ -337,12 +282,13 @@ export class BoardNode {
     let blueCleared = 0;
 
     for (const neighbor of this.neighbors) {
-      debugScore(
-        "clearing neighbor",
-        neighbor.coords,
-        neighbor.char,
-        neighbor.getColor()
-      );
+      if (debugScore.enabled)
+        debugScore(
+          "clearing neighbor",
+          neighbor.coords,
+          neighbor.char,
+          neighbor.getColor()
+        );
       if (neighbor.getColor() === "red") {
         redCleared++;
         neighbor.clear();
@@ -359,13 +305,14 @@ export class BoardNode {
   }
 
   isCenterOfHexagon(): "red" | "blue" | false {
-    debugScore(
-      "check if center",
-      this.char,
-      this.coords,
-      this.color,
-      this.neighbors.length
-    );
+    if (debugScore.enabled)
+      debugScore(
+        "check if center",
+        this.char,
+        this.coords,
+        this.color,
+        this.neighbors.length
+      );
 
     // Cannot be the center of the hexagon if it has less than 6 neighbors
     if (this.neighbors.length !== 6) {
@@ -394,7 +341,8 @@ export class BoardNode {
     }
 
     for (let neighbor of this.neighbors) {
-      debugScore("neighbor", neighbor.char, neighbor.coords, neighbor.color);
+      if (debugScore.enabled)
+        debugScore("neighbor", neighbor.char, neighbor.coords, neighbor.color);
       if (neighbor.color === "blue" || neighbor.color === "very_blue") {
         blueCount++;
       } else if (neighbor.color === "red" || neighbor.color === "very_red") {
@@ -404,11 +352,12 @@ export class BoardNode {
       }
     }
 
-    debugScore("redCount", redCount, "blueCount", blueCount);
+    if (debugScore.enabled)
+      debugScore("redCount", redCount, "blueCount", blueCount);
 
     const hexagonColor = redCount > blueCount ? "red" : "blue";
 
-    debugScore("hexagonColor", hexagonColor);
+    if (debugScore.enabled) debugScore("hexagonColor", hexagonColor);
 
     return hexagonColor;
   }
@@ -418,16 +367,13 @@ export class BoardNode {
     this.isCleared = true;
   }
 
-  clone(recurse = true) {
+  clone() {
     const node = new BoardNode(this.char, this.color);
     node.used = this.used;
     node.coords = this.coords;
-    node.amSwapped = this.amSwapped;
-
-    if (recurse && this.swappedWith) {
-      node.swappedWith = this.swappedWith.clone(false);
-      node.swappedWith!.swappedWith = node;
-    }
+    node.swappedWith = this.swappedWith
+      ? [this.swappedWith[0], this.swappedWith[1]]
+      : null;
 
     return node;
   }
@@ -445,12 +391,12 @@ export class Word {
   }
 
   findNode(node: BoardNode) {
-    return this.nodes.find((n) => compareCoords(n, node));
+    return this.nodes.find((n) => compareCoords(n.coords, node.coords));
   }
 
   findSwappedNode(node: BoardNode) {
     return this.nodes.find(
-      (n) => n.swappedWith && compareCoords(n.swappedWith, node)
+      (n) => n.swappedWith && compareCoords(n.swappedWith, node.coords)
     );
   }
 
@@ -467,8 +413,6 @@ export class Word {
   }
 }
 
-function compareCoords(node1: BoardNode, node2: BoardNode) {
-  return (
-    node1.coords[0] === node2.coords[0] && node1.coords[1] === node2.coords[1]
-  );
+function compareCoords(node1: Coords, node2: Coords) {
+  return node1[0] === node2[0] && node1[1] === node2[1];
 }

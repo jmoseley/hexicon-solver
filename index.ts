@@ -50,7 +50,6 @@ function getResults(parsedBoard: Board, dictionary: Trie) {
       );
     case "minimax":
       const result = miniMax(parsedBoard, dictionary);
-      console.log("result", result);
       if (!result.score) {
         throw new Error("No solution found.");
       }

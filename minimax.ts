@@ -20,14 +20,14 @@ function runMiniMax(
   mover: "red" | "blue",
   depth = 0
 ): { score?: BoardScore; hexagons: number; mover: "red" | "blue" } {
-  debug("Depth", depth, "mover", mover);
+  if (debug.enabled) debug("Depth", depth, "mover", mover);
   const moves = findAllWords(board, dictionary, mover)
     .filter((s) => s.word.length > 5)
     .filter((s) => s.blueHexagonCount > 0 || s.redHexagonCount > 0);
 
   // Base case
   if (depth >= MAX_DEPTH) {
-    debug("Base case");
+    if (debug.enabled) debug("Base case");
     // Maximize blue, minimize red
     if (mover === "blue") {
       const score = moves.reduce(
@@ -48,7 +48,8 @@ function runMiniMax(
         } as { score?: BoardScore; hexagons: number; mover: "red" | "blue" }
       );
       if (score.score) {
-        debug(printBoard(score.score.board, score.score.word, score.score));
+        if (debug.enabled)
+          debug(printBoard(score.score.board, score.score.word, score.score));
       }
       return score;
     } else {
@@ -70,25 +71,27 @@ function runMiniMax(
         } as { score?: BoardScore; hexagons: number; mover: "red" | "blue" }
       );
       if (score.score) {
-        debug(printBoard(score.score.board, score.score.word, score.score));
+        if (debug.enabled)
+          debug(printBoard(score.score.board, score.score.word, score.score));
       }
       return score;
     }
   }
 
-  debug("Recursive case", "Mover", mover);
+  if (debug.enabled) debug("Recursive case", "Mover", mover);
 
   // Recursive case
   if (mover === "blue") {
     return moves.reduce(
       (best, move) => {
-        debug(
-          "Move",
-          move.word.toString(),
-          move.probability,
-          move.blueHexagonCount
-        );
-        debug(printBoard(move.board, move.word, move));
+        if (debug.enabled)
+          debug(
+            "Move",
+            move.word.toString(),
+            move.probability,
+            move.blueHexagonCount
+          );
+        if (debug.enabled) debug(printBoard(move.board, move.word, move));
 
         const score = runMiniMax(
           move.board,
@@ -99,7 +102,8 @@ function runMiniMax(
         if (!score) {
           return best;
         }
-        debug("Score", score.redHexagonCount, score.probability);
+        if (debug.enabled)
+          debug("Score", score.redHexagonCount, score.probability);
 
         if (score.redHexagonCount * score.probability < best.hexagons) {
           return {
@@ -119,13 +123,14 @@ function runMiniMax(
   } else {
     return moves.reduce(
       (best, move) => {
-        debug(
-          "Move",
-          move.word.toString(),
-          move.probability,
-          move.blueHexagonCount
-        );
-        debug(printBoard(move.board, move.word, move));
+        if (debug.enabled)
+          debug(
+            "Move",
+            move.word.toString(),
+            move.probability,
+            move.blueHexagonCount
+          );
+        if (debug.enabled) debug(printBoard(move.board, move.word, move));
         const score = runMiniMax(
           move.board,
           dictionary,
@@ -135,7 +140,8 @@ function runMiniMax(
         if (!score) {
           return best;
         }
-        debug("Score", score.blueHexagonCount, score.probability);
+        if (debug.enabled)
+          debug("Score", score.blueHexagonCount, score.probability);
 
         if (score.blueHexagonCount * score.probability > best.hexagons) {
           return {

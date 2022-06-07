@@ -99,7 +99,7 @@ export async function extractHexColor(filename: string): Promise<Color[]> {
 
     const total = imageData.data.reduce((acc, cur) => acc + cur, 0);
 
-    debug(`Total at ${coords} (${idx}): ${total}`);
+    if (debug.enabled) debug(`Total at ${coords} (${idx}): ${total}`);
 
     const color = COLOR_VALUES.find(([value, _color, tolerance]) =>
       isWithin(total, value, tolerance)
