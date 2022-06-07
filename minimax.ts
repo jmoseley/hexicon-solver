@@ -21,9 +21,9 @@ function runMiniMax(
   depth = 0
 ): { score?: BoardScore; hexagons: number; mover: "red" | "blue" } {
   if (debug.enabled) debug("Depth", depth, "mover", mover);
-  const moves = findAllWords(board, dictionary, mover)
-    .filter((s) => s.word.length > 5)
-    .filter((s) => s.blueHexagonCount > 0 || s.redHexagonCount > 0);
+  const moves = findAllWords(board, dictionary, mover).filter(
+    (s) => s.word.length > 6
+  );
 
   // Base case
   if (depth >= MAX_DEPTH) {

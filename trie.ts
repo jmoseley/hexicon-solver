@@ -63,39 +63,7 @@ export class Trie {
 
     return node.children;
   }
-
-  find(prefix: string) {
-    let node = this.root;
-    let output = [] as string[];
-
-    // for every character in the prefix
-    for (let i = 0; i < prefix.length; i++) {
-      // make sure prefix actually has words
-      if (node.children[prefix[i]]) {
-        node = node.children[prefix[i]];
-      } else {
-        // there's none. just return it.
-        return output;
-      }
-    }
-    // recursively find all words in the node
-    findAllWords(node, output);
-
-    return output;
-  }
 }
-
-const findAllWords = (node: TrieNode, arr: string[]) => {
-  // base case, if node is at a word, push to output
-  if (node.end) {
-    arr.unshift(node.getWord());
-  }
-
-  // iterate through each children, call recursive findAllWords
-  for (let child in node.children) {
-    findAllWords(node.children[child], arr);
-  }
-};
 
 class TrieNode {
   public children: { [key: string]: TrieNode } = {};
