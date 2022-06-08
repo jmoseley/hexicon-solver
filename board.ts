@@ -78,11 +78,11 @@ export class Board {
       }
     }
 
-    if (!blueScore) {
+    if (blueScore === undefined) {
       blueScore = parseInt(await question("Enter blue score: "));
     }
 
-    if (!redScore) {
+    if (redScore === undefined) {
       redScore = parseInt(await question("Enter red score: "));
     }
 

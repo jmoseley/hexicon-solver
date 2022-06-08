@@ -27,6 +27,8 @@ export function findAllWords(
         debug("Starting at node", node.char, node.coords, "turn", mover);
       if (node.isCleared) {
         node.isCleared = false;
+        const originalProbability = board.probability;
+        board.probability = originalProbability * (1 / 26);
         for (const letter of LETTERS) {
           node.char = letter;
           words.push(
@@ -41,6 +43,7 @@ export function findAllWords(
             )
           );
         }
+        board.probability = originalProbability;
         node.isCleared = true;
       } else {
         words.push(
@@ -92,7 +95,7 @@ function getScoredWords(
     return [];
   }
 
-  if (board.probability < 0.1) {
+  if (board.probability < 0.01) {
     return [];
   }
 
@@ -192,6 +195,8 @@ function getScoredWords(
 
     const originalChar = node.char;
     node.isCleared = false;
+    const originalProbability = board.probability;
+    board.probability = originalProbability * (1 / 26);
     for (const letter of LETTERS) {
       node.char = letter;
 
@@ -207,6 +212,7 @@ function getScoredWords(
         )
       );
     }
+    board.probability = originalProbability;
     node.char = originalChar;
     node.isCleared = true;
   }
