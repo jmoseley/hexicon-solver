@@ -30,9 +30,16 @@ type Coords = [number, number];
 
 // Graph to represent the hexagonal board
 export class Board {
+  public redScore = 0;
+  public blueScore = 0;
   constructor(public nodes: BoardNode[][]) {}
 
-  static async create(text: string, colors: Color[]) {
+  static async create(
+    text: string,
+    colors: Color[],
+    blueScore: number | undefined,
+    redScore: number | undefined
+  ) {
     // validate the text input first
     const linesRaw = text.split("\n").filter((line) => line.length > 0);
     if (debug.enabled) debug("linesRaw", linesRaw);
@@ -71,17 +78,31 @@ export class Board {
       }
     }
 
+    if (!blueScore) {
+      blueScore = parseInt(await question("Enter blue score: "));
+    }
+
+    if (!redScore) {
+      redScore = parseInt(await question("Enter red score: "));
+    }
+
     if (debug.enabled) debug("lines", lines);
 
     const nodes = lines.map((line, lineNum) =>
       line.map(({ char, color }) => new BoardNode(char, color))
     );
 
-    return this.createFromNodes(nodes);
+    return this.createFromNodes(nodes, blueScore, redScore);
   }
 
-  static createFromNodes(nodes: BoardNode[][]) {
+  static createFromNodes(
+    nodes: BoardNode[][],
+    blueScore: number,
+    redScore: number
+  ) {
     const board = new Board(nodes);
+    board.redScore = redScore;
+    board.blueScore = blueScore;
 
     for (const [lineNum, line] of nodes.entries()) {
       if (debug.enabled) debug("lineNum", lineNum);
@@ -152,7 +173,9 @@ export class Board {
 
   clone() {
     return Board.createFromNodes(
-      this.nodes.map((line) => line.map((node) => node.clone()))
+      this.nodes.map((line) => line.map((node) => node.clone())),
+      this.blueScore,
+      this.redScore
     );
   }
 }

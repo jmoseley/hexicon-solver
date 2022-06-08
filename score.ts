@@ -88,6 +88,9 @@ export function scoreBoard(
     }
   }
 
+  board.redScore += redHexagonCount;
+  board.blueScore += blueHexagonCount;
+
   for (const { node, color } of hexagonCenters) {
     const cleared = node.clearForHexagon(color);
     redCleared += cleared.redCleared;

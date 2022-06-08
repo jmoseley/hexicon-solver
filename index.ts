@@ -1,6 +1,9 @@
-import { Board, BoardScore, Word } from "./board";
+import { Board } from "./board";
 import { loadWords } from "./util";
-import { extractTextFromScreenshot } from "./ocr";
+import {
+  extractTextFromScreenshot,
+  extractCurrentScoreFromScreenshot,
+} from "./ocr";
 import { findAllWords } from "./solve";
 import { printBoard } from "./format";
 import { extractHexColor } from "./extract_colors";
@@ -16,7 +19,15 @@ async function main() {
   const text = await extractTextFromScreenshot(screenshot);
   const colors = await extractHexColor(screenshot);
 
-  const parsedBoard = await Board.create(text, colors);
+  const currentScore = await extractCurrentScoreFromScreenshot(screenshot);
+  console.info("Extracted current score:", currentScore);
+
+  const parsedBoard = await Board.create(
+    text,
+    colors,
+    currentScore.blueScore,
+    currentScore.redScore
+  );
 
   const sorted = getResults(parsedBoard, dictionary);
 
