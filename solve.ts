@@ -14,6 +14,9 @@ export function findAllWords(
   dictionary: Trie,
   mover: "red" | "blue"
 ): BoardScore[] {
+  const visited = new Set<string>();
+  visited.add(board.hash());
+
   const words = [] as ReturnType<typeof getScoredWords>;
   for (const line of board.nodes) {
     for (const node of line) {
@@ -27,13 +30,21 @@ export function findAllWords(
         for (const letter of LETTERS) {
           node.char = letter;
           words.push(
-            ...getScoredWords(board, node, [], dictionary, mover, 1 / 26, false)
+            ...getScoredWords(
+              board,
+              node,
+              [],
+              dictionary,
+              visited,
+              mover,
+              false
+            )
           );
         }
         node.isCleared = true;
       } else {
         words.push(
-          ...getScoredWords(board, node, [], dictionary, mover, 1, false)
+          ...getScoredWords(board, node, [], dictionary, visited, mover, false)
         );
       }
 
@@ -50,7 +61,7 @@ export function findAllWords(
         if (debug.enabled)
           debug("Starting at swapped node", node.char, node.coords);
         words.push(
-          ...getScoredWords(board, node, [], dictionary, mover, 1, true)
+          ...getScoredWords(board, node, [], dictionary, visited, mover, true)
         );
         node.swapWith(neighbor, true);
       }
@@ -66,9 +77,17 @@ function getScoredWords(
   node: BoardNode,
   accumulation: BoardNode[],
   dictionary: Trie,
+  visited: Set<string>,
   mover: "red" | "blue",
   hasSwapped: boolean
 ): BoardScore[] {
+  const boardHash = board.hash();
+  if (visited.has(boardHash)) {
+    debug("Already visited", boardHash);
+    return [];
+  }
+  visited.add(boardHash);
+
   if (node.used || node.isOpposingColor(mover)) {
     return [];
   }
@@ -138,8 +157,8 @@ function getScoredWords(
                 neighbor,
                 accumulation,
                 dictionary,
+                visited,
                 mover,
-                probability,
                 true
               )
             );
@@ -157,6 +176,7 @@ function getScoredWords(
             neighbor,
             accumulation,
             dictionary,
+            visited,
             mover,
             hasSwapped
           )
@@ -181,8 +201,8 @@ function getScoredWords(
           node,
           accumulation,
           dictionary,
+          visited,
           mover,
-          probability * (1 / 26),
           hasSwapped
         )
       );

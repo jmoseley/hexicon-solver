@@ -164,6 +164,21 @@ export class Board {
     return board;
   }
 
+  hash() {
+    return this.nodes
+      .map((line) =>
+        line
+          .map(
+            (node) =>
+              `${node.char}${getShortColor(node.color)}${
+                node.isCleared ? "c" : "n"
+              }`
+          )
+          .join("")
+      )
+      .join("");
+  }
+
   getNode(coords: [number, number] | BoardNode) {
     if (coords instanceof BoardNode) {
       coords = coords.coords;
@@ -177,6 +192,21 @@ export class Board {
       this.blueScore,
       this.redScore
     );
+  }
+}
+
+function getShortColor(color: Color): string {
+  switch (color) {
+    case "blue":
+      return "b";
+    case "red":
+      return "r";
+    case "very_red":
+      return "vr";
+    case "very_blue":
+      return "vb";
+    case "none":
+      return "n";
   }
 }
 

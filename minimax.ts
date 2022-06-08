@@ -1,7 +1,6 @@
 import debugFactory from "debug";
 
 import { Board, BoardScore } from "./board";
-import { printBoard } from "./format";
 import { sortByHexagonCount } from "./score";
 import { findAllWords } from "./solve";
 import { Trie } from "./trie";
@@ -75,8 +74,9 @@ function runMiniMax(
     .filter((s) => {
       if (mover === "blue") {
         return s.blueHexagonCount > 0;
+      } else {
+        return s.redHexagonCount > 0;
       }
-      return true;
     })
     .sort(sortByHexagonCount(mover));
 
