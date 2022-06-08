@@ -7,19 +7,20 @@ import { Trie } from "./trie";
 
 const debug = debugFactory("minimax");
 
-const MAX_DEPTH = 5;
-
 // Use minimax to find the best move
 export function miniMax(board: Board, dictionary: Trie) {
   const moves = findAllWords(board, dictionary, "blue")
     .filter((s) => s.word.length > 5)
     .sort(sortByHexagonCount("blue"));
 
+  const maxDepth = 16 - board.blueScore + 1;
+  debug("maxDepth", maxDepth);
+
   let alpha = -Infinity;
   let best = -Infinity;
   let bestMove: BoardScore | undefined;
   for (const move of moves) {
-    const score = runMiniMax(move.board, dictionary, "red", alpha);
+    const score = runMiniMax(move.board, dictionary, "red", maxDepth, alpha);
     if (score > best) {
       best = score;
       bestMove = move;
@@ -41,6 +42,7 @@ function runMiniMax(
   board: Board,
   dictionary: Trie,
   mover: "red" | "blue",
+  maxDepth: number,
   alpha: number = -Infinity,
   beta: number = Infinity,
   depth: number = 0
@@ -57,7 +59,7 @@ function runMiniMax(
   }
 
   // Base case
-  if (depth === MAX_DEPTH) {
+  if (depth === maxDepth) {
     if (debug.enabled) debug("Base case");
     // Maximize blue, minimize red
     if (mover === "blue") {
@@ -71,13 +73,13 @@ function runMiniMax(
 
   const moves = findAllWords(board, dictionary, mover)
     .filter((s) => s.word.length > 4)
-    .filter((s) => {
-      if (mover === "blue") {
-        return s.blueHexagonCount > 0;
-      } else {
-        return s.redHexagonCount > 0;
-      }
-    })
+    // .filter((s) => {
+    //   if (mover === "blue") {
+    //     return s.blueHexagonCount > 0;
+    //   } else {
+    //     return s.redHexagonCount > 0;
+    //   }
+    // })
     .sort(sortByHexagonCount(mover));
 
   if (moves.length === 0) {
@@ -97,7 +99,15 @@ function runMiniMax(
     for (const move of moves) {
       best = Math.max(
         best,
-        runMiniMax(move.board, dictionary, "red", alpha, beta, depth + 1)
+        runMiniMax(
+          move.board,
+          dictionary,
+          "red",
+          maxDepth,
+          alpha,
+          beta,
+          depth + 1
+        )
       );
       if (best >= beta) {
         if (debug.enabled) debug("Beta cutoff", best, beta);
@@ -111,7 +121,15 @@ function runMiniMax(
     for (const move of moves) {
       best = Math.min(
         best,
-        runMiniMax(move.board, dictionary, "blue", alpha, beta, depth + 1)
+        runMiniMax(
+          move.board,
+          dictionary,
+          "blue",
+          maxDepth,
+          alpha,
+          beta,
+          depth + 1
+        )
       );
       if (best <= alpha) {
         if (debug.enabled) debug("Alpha cutoff", best, alpha);
