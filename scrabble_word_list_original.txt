@@ -156567,6 +156567,11 @@ taekwondo
 taekwondos
 tael
 taels
+taenia
+taeniae
+taenias
+taeniases
+taeniasis
 taffarel
 taffarels
 tafferel
