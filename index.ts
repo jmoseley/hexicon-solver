@@ -53,18 +53,15 @@ function getResults(parsedBoard: Board, dictionary: Trie) {
     case "":
     case "solve":
       return findAllWords(parsedBoard, dictionary, "blue").sort(
-        solve.sortByHexagonCount
+        solve.sortByHexagonCount("blue")
       );
     case "grow":
       return findAllWords(parsedBoard, dictionary, "blue").sort(
-        solve.sortBySquaresRemaining
+        solve.sortBySquaresRemaining("blue")
       );
     case "minimax":
       const result = miniMax(parsedBoard, dictionary);
-      if (!result.score) {
-        throw new Error("No solution found.");
-      }
-      return [result.score];
+      return [result];
     default:
       throw new Error(`Unknown command: ${command}`);
   }

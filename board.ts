@@ -14,7 +14,6 @@ const debugScore = debugFactory("scoreBoard");
 const debugSuper = debugFactory("superhexagon");
 
 export interface BoardScore {
-  probability: number;
   board: Board;
   word: Word;
   blueHexagonCount: number;
@@ -32,6 +31,7 @@ type Coords = [number, number];
 export class Board {
   public redScore = 0;
   public blueScore = 0;
+  public probability = 1;
   constructor(public nodes: BoardNode[][]) {}
 
   static async create(

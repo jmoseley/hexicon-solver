@@ -67,14 +67,13 @@ function getScoredWords(
   accumulation: BoardNode[],
   dictionary: Trie,
   mover: "red" | "blue",
-  probability: number,
   hasSwapped: boolean
 ): BoardScore[] {
-  if (probability < 0.01) {
+  if (node.used || node.isOpposingColor(mover)) {
     return [];
   }
 
-  if (node.used || node.isOpposingColor(mover)) {
+  if (board.probability < 0.1) {
     return [];
   }
 
@@ -92,7 +91,7 @@ function getScoredWords(
       const accumulatedString = getStringFromNodes(accumulation);
       if (dictionary.contains(accumulatedString)) {
         if (debug.enabled) debug("Found word:", accumulatedString);
-        words.push(scoreBoard(board, new Word(accumulation), probability));
+        words.push(scoreBoard(board, new Word(accumulation)));
       }
 
       // Check if the trie contains the accumulation
@@ -159,7 +158,6 @@ function getScoredWords(
             accumulation,
             dictionary,
             mover,
-            probability,
             hasSwapped
           )
         );
