@@ -164,19 +164,23 @@ export class Board {
     return board;
   }
 
-  hash() {
-    return this.nodes
-      .map((line) =>
-        line
-          .map(
-            (node) =>
-              `${node.char}${getShortColor(node.color)}${
-                node.isCleared ? "c" : "n"
-              }`
-          )
-          .join("")
-      )
-      .join("");
+  hash(node: BoardNode) {
+    return (
+      node.char +
+      JSON.stringify(node.coords) +
+      this.nodes
+        .map((line) =>
+          line
+            .map(
+              (node) =>
+                `${node.char}${getShortColor(node.color)}${
+                  node.isCleared ? "c" : "n"
+                }`
+            )
+            .join("")
+        )
+        .join("")
+    );
   }
 
   getNode(coords: [number, number] | BoardNode) {

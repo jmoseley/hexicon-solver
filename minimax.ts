@@ -13,7 +13,7 @@ export function miniMax(board: Board, dictionary: Trie) {
     .filter((s) => s.word.length > 5)
     .sort(sortByHexagonCount("blue"));
 
-  const maxDepth = 16 - board.blueScore + 1;
+  const maxDepth = Math.min(16 - board.blueScore + 1, 5);
   debug("maxDepth", maxDepth);
 
   let alpha = -Infinity;
@@ -73,21 +73,21 @@ function runMiniMax(
 
   const moves = findAllWords(board, dictionary, mover)
     .filter((s) => s.word.length > 4)
-    // .filter((s) => {
-    //   if (mover === "blue") {
-    //     return s.blueHexagonCount > 0;
-    //   } else {
-    //     return s.redHexagonCount > 0;
-    //   }
-    // })
+    .filter((s) => {
+      if (mover === "blue") {
+        return s.blueHexagonCount > 0;
+      } else {
+        return s.redHexagonCount > 0;
+      }
+    })
     .sort(sortByHexagonCount(mover));
 
   if (moves.length === 0) {
     if (debug.enabled) debug("No moves");
     if (mover === "blue") {
-      return board.blueScore;
+      return board.blueScore * board.probability;
     } else {
-      return board.redScore;
+      return board.redScore * board.probability;
     }
   }
 

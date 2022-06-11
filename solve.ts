@@ -15,7 +15,6 @@ export function findAllWords(
   mover: "red" | "blue"
 ): BoardScore[] {
   const visited = new Set<string>();
-  visited.add(board.hash());
 
   const words = [] as ReturnType<typeof getScoredWords>;
   for (const line of board.nodes) {
@@ -32,20 +31,17 @@ export function findAllWords(
         for (const letter of LETTERS) {
           node.char = letter;
 
-          const boardHash = board.hash();
-          if (!visited.has(boardHash)) {
-            words.push(
-              ...getScoredWords(
-                board,
-                node,
-                [],
-                dictionary,
-                visited,
-                mover,
-                false
-              )
-            );
-          }
+          words.push(
+            ...getScoredWords(
+              board,
+              node,
+              [],
+              dictionary,
+              visited,
+              mover,
+              false
+            )
+          );
         }
         board.probability = originalProbability;
         node.isCleared = true;
@@ -64,16 +60,17 @@ export function findAllWords(
         ) {
           continue;
         }
+        if (neighbor.char === node.char) {
+          continue;
+        }
+
         node.swapWith(neighbor);
         if (debug.enabled)
           debug("Starting at swapped node", node.char, node.coords);
 
-        const boardHash = board.hash();
-        if (!visited.has(boardHash)) {
-          words.push(
-            ...getScoredWords(board, node, [], dictionary, visited, mover, true)
-          );
-        }
+        words.push(
+          ...getScoredWords(board, node, [], dictionary, visited, mover, true)
+        );
         node.swapWith(neighbor, true);
       }
     }
@@ -92,7 +89,11 @@ function getScoredWords(
   mover: "red" | "blue",
   hasSwapped: boolean
 ): BoardScore[] {
-  const boardHash = board.hash();
+  const boardHash = board.hash(node);
+  if (visited.has(boardHash)) {
+    debug("Already visited", boardHash);
+    return [];
+  }
   visited.add(boardHash);
 
   if (node.used || node.isOpposingColor(mover)) {
@@ -157,21 +158,22 @@ function getScoredWords(
               continue;
             }
 
-            neighbor.swapWith(neighborNeighbor);
-            const boardHash = board.hash();
-            if (!visited.has(boardHash)) {
-              words.push(
-                ...getScoredWords(
-                  board,
-                  neighbor,
-                  accumulation,
-                  dictionary,
-                  visited,
-                  mover,
-                  true
-                )
-              );
+            if (neighbor.char === neighborNeighbor.char) {
+              continue;
             }
+
+            neighbor.swapWith(neighborNeighbor);
+            words.push(
+              ...getScoredWords(
+                board,
+                neighbor,
+                accumulation,
+                dictionary,
+                visited,
+                mover,
+                true
+              )
+            );
             neighbor.swapWith(neighborNeighbor, true);
           }
         }
@@ -207,20 +209,17 @@ function getScoredWords(
     for (const letter of LETTERS) {
       node.char = letter;
 
-      const boardHash = board.hash();
-      if (!visited.has(boardHash)) {
-        words.push(
-          ...getScoredWords(
-            board,
-            node,
-            accumulation,
-            dictionary,
-            visited,
-            mover,
-            hasSwapped
-          )
-        );
-      }
+      words.push(
+        ...getScoredWords(
+          board,
+          node,
+          accumulation,
+          dictionary,
+          visited,
+          mover,
+          hasSwapped
+        )
+      );
     }
     board.probability = originalProbability;
     node.char = originalChar;
