@@ -4,7 +4,7 @@ import readlineFactory from "readline";
 import { Trie } from "./trie";
 
 export function loadWords(): Trie {
-  const words = fs.readFileSync("./scrabble_word_list.txt", "utf8").split("\n");
+  const words = fs.readFileSync("./word_list.txt", "utf8").split("\n");
 
   const trie = new Trie();
   for (const word of words) {
