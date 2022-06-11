@@ -89,7 +89,7 @@ function getScoredWords(
   mover: "red" | "blue",
   hasSwapped: boolean
 ): BoardScore[] {
-  const boardHash = board.hash(node);
+  const boardHash = board.hash(mover, accumulation);
   if (visited.has(boardHash)) {
     debug("Already visited", boardHash);
     return [];

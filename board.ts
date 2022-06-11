@@ -164,10 +164,12 @@ export class Board {
     return board;
   }
 
-  hash(node: BoardNode) {
+  hash(mover: "red" | "blue", accumulation: BoardNode[]) {
     return (
-      node.char +
-      JSON.stringify(node.coords) +
+      mover +
+      accumulation
+        .map((node) => JSON.stringify(node.coords) + node.char)
+        .join("") +
       this.nodes
         .map((line) =>
           line
