@@ -4,62 +4,85 @@ import { printBoard } from "./format";
 
 const debug = debugFactory("score");
 
-export function sortBySquaresRemaining(a: BoardScore, b: BoardScore) {
-  // Sort by the difference in red and blue hexagons
-  if (a.blueSquaresRemaining > b.blueSquaresRemaining) {
-    return -1;
-  }
-  if (a.blueSquaresRemaining < b.blueSquaresRemaining) {
-    return 1;
-  }
-  if (a.redSquaresRemaining > b.blueSquaresRemaining) {
-    return 1;
-  }
-  if (a.redSquaresRemaining < b.redSquaresRemaining) {
-    return -1;
-  }
+export function sortBySquaresRemaining(mover: "red" | "blue") {
+  const sortByHexagons = sortByHexagonCount(mover);
 
-  return sortByHexagonCount(a, b);
+  return (a: BoardScore, b: BoardScore) => {
+    // Sort by the difference in red and blue hexagons
+    if (a.blueSquaresRemaining > b.blueSquaresRemaining) {
+      return -1;
+    }
+    if (a.blueSquaresRemaining < b.blueSquaresRemaining) {
+      return 1;
+    }
+    if (a.redSquaresRemaining > b.blueSquaresRemaining) {
+      return 1;
+    }
+    if (a.redSquaresRemaining < b.redSquaresRemaining) {
+      return -1;
+    }
+
+    return sortByHexagons(a, b);
+  };
 }
 
-export function sortByHexagonCount(a: BoardScore, b: BoardScore) {
-  // Sort by the difference in red and blue hexagons
-  if (a.blueHexagonCount > b.blueHexagonCount) {
-    return -1;
-  }
-  if (a.blueHexagonCount < b.blueHexagonCount) {
-    return 1;
-  }
+export function sortByHexagonCount(mover: "red" | "blue") {
+  return (a: BoardScore, b: BoardScore) => {
+    if (mover === "red") {
+      if (a.redHexagonCount > b.redHexagonCount) {
+        return -1;
+      }
+      if (a.redHexagonCount < b.redHexagonCount) {
+        return 1;
+      }
 
-  if (a.blueSquaresRemaining > b.blueSquaresRemaining) {
-    return -1;
-  }
-  if (a.blueSquaresRemaining < b.blueSquaresRemaining) {
-    return 1;
-  }
-  if (a.redSquaresRemaining > b.blueSquaresRemaining) {
-    return 1;
-  }
-  if (a.redSquaresRemaining < b.redSquaresRemaining) {
-    return -1;
-  }
+      if (a.redSquaresRemaining > b.blueSquaresRemaining) {
+        return -1;
+      }
+      if (a.redSquaresRemaining < b.redSquaresRemaining) {
+        return 1;
+      }
+      if (a.blueSquaresRemaining > b.blueSquaresRemaining) {
+        return 1;
+      }
+      if (a.blueSquaresRemaining < b.blueSquaresRemaining) {
+        return -1;
+      }
+    } else {
+      if (a.blueHexagonCount > b.blueHexagonCount) {
+        return -1;
+      }
+      if (a.blueHexagonCount < b.blueHexagonCount) {
+        return 1;
+      }
 
-  // Sort by word length
-  if (a.word.length > b.word.length) {
-    return -1;
-  }
-  if (a.word.length < b.word.length) {
-    return 1;
-  }
+      if (a.blueSquaresRemaining > b.blueSquaresRemaining) {
+        return -1;
+      }
+      if (a.blueSquaresRemaining < b.blueSquaresRemaining) {
+        return 1;
+      }
+      if (a.redSquaresRemaining > b.blueSquaresRemaining) {
+        return 1;
+      }
+      if (a.redSquaresRemaining < b.redSquaresRemaining) {
+        return -1;
+      }
+    }
 
-  return 0;
+    // Sort by word length
+    if (a.word.length > b.word.length) {
+      return -1;
+    }
+    if (a.word.length < b.word.length) {
+      return 1;
+    }
+
+    return 0;
+  };
 }
 
-export function scoreBoard(
-  board: Board,
-  word: Word,
-  probability: number
-): BoardScore {
+export function scoreBoard(board: Board, word: Word): BoardScore {
   board = board.clone();
   if (debug.enabled) debug("scoreBoard", word.toString());
   if (debug.enabled) debug(printBoard(board));
@@ -87,6 +110,9 @@ export function scoreBoard(
       }
     }
   }
+
+  board.redScore += redHexagonCount;
+  board.blueScore += blueHexagonCount;
 
   for (const { node, color } of hexagonCenters) {
     const cleared = node.clearForHexagon(color);
@@ -128,6 +154,5 @@ export function scoreBoard(
     blueSquaresRemaining,
     redSquaresRemaining,
     numSuperHexagons,
-    probability,
   };
 }

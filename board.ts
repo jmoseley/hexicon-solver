@@ -14,7 +14,6 @@ const debugScore = debugFactory("scoreBoard");
 const debugSuper = debugFactory("superhexagon");
 
 export interface BoardScore {
-  probability: number;
   board: Board;
   word: Word;
   blueHexagonCount: number;
@@ -30,9 +29,17 @@ type Coords = [number, number];
 
 // Graph to represent the hexagonal board
 export class Board {
+  public redScore = 0;
+  public blueScore = 0;
+  public probability = 1;
   constructor(public nodes: BoardNode[][]) {}
 
-  static async create(text: string, colors: Color[]) {
+  static async create(
+    text: string,
+    colors: Color[],
+    blueScore: number | undefined,
+    redScore: number | undefined
+  ) {
     // validate the text input first
     const linesRaw = text.split("\n").filter((line) => line.length > 0);
     if (debug.enabled) debug("linesRaw", linesRaw);
@@ -71,17 +78,31 @@ export class Board {
       }
     }
 
+    if (blueScore === undefined) {
+      blueScore = parseInt(await question("Enter blue score: "));
+    }
+
+    if (redScore === undefined) {
+      redScore = parseInt(await question("Enter red score: "));
+    }
+
     if (debug.enabled) debug("lines", lines);
 
     const nodes = lines.map((line, lineNum) =>
       line.map(({ char, color }) => new BoardNode(char, color))
     );
 
-    return this.createFromNodes(nodes);
+    return this.createFromNodes(nodes, blueScore, redScore);
   }
 
-  static createFromNodes(nodes: BoardNode[][]) {
+  static createFromNodes(
+    nodes: BoardNode[][],
+    blueScore: number,
+    redScore: number
+  ) {
     const board = new Board(nodes);
+    board.redScore = redScore;
+    board.blueScore = blueScore;
 
     for (const [lineNum, line] of nodes.entries()) {
       if (debug.enabled) debug("lineNum", lineNum);
@@ -143,6 +164,27 @@ export class Board {
     return board;
   }
 
+  hash(mover: "red" | "blue", accumulation: BoardNode[]) {
+    return (
+      mover +
+      accumulation
+        .map((node) => JSON.stringify(node.coords) + node.char)
+        .join("") +
+      this.nodes
+        .map((line) =>
+          line
+            .map(
+              (node) =>
+                `${node.char}${getShortColor(node.color)}${
+                  node.isCleared ? "c" : "n"
+                }`
+            )
+            .join("")
+        )
+        .join("")
+    );
+  }
+
   getNode(coords: [number, number] | BoardNode) {
     if (coords instanceof BoardNode) {
       coords = coords.coords;
@@ -152,8 +194,25 @@ export class Board {
 
   clone() {
     return Board.createFromNodes(
-      this.nodes.map((line) => line.map((node) => node.clone()))
+      this.nodes.map((line) => line.map((node) => node.clone())),
+      this.blueScore,
+      this.redScore
     );
+  }
+}
+
+function getShortColor(color: Color): string {
+  switch (color) {
+    case "blue":
+      return "b";
+    case "red":
+      return "r";
+    case "very_red":
+      return "vr";
+    case "very_blue":
+      return "vb";
+    case "none":
+      return "n";
   }
 }
 

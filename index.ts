@@ -1,6 +1,9 @@
-import { Board, BoardScore, Word } from "./board";
+import { Board } from "./board";
 import { loadWords } from "./util";
-import { extractTextFromScreenshot } from "./ocr";
+import {
+  extractTextFromScreenshot,
+  extractCurrentScoreFromScreenshot,
+} from "./ocr";
 import { findAllWords } from "./solve";
 import { printBoard } from "./format";
 import { extractHexColor } from "./extract_colors";
@@ -16,7 +19,15 @@ async function main() {
   const text = await extractTextFromScreenshot(screenshot);
   const colors = await extractHexColor(screenshot);
 
-  const parsedBoard = await Board.create(text, colors);
+  const currentScore = await extractCurrentScoreFromScreenshot(screenshot);
+  console.info("Extracted current score:", currentScore);
+
+  const parsedBoard = await Board.create(
+    text,
+    colors,
+    currentScore.blueScore,
+    currentScore.redScore
+  );
 
   const sorted = getResults(parsedBoard, dictionary);
 
@@ -42,18 +53,15 @@ function getResults(parsedBoard: Board, dictionary: Trie) {
     case "":
     case "solve":
       return findAllWords(parsedBoard, dictionary, "blue").sort(
-        solve.sortByHexagonCount
+        solve.sortByHexagonCount("blue")
       );
     case "grow":
       return findAllWords(parsedBoard, dictionary, "blue").sort(
-        solve.sortBySquaresRemaining
+        solve.sortBySquaresRemaining("blue")
       );
     case "minimax":
       const result = miniMax(parsedBoard, dictionary);
-      if (!result.score) {
-        throw new Error("No solution found.");
-      }
-      return [result.score];
+      return [result];
     default:
       throw new Error(`Unknown command: ${command}`);
   }

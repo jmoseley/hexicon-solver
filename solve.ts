@@ -14,6 +14,8 @@ export function findAllWords(
   dictionary: Trie,
   mover: "red" | "blue"
 ): BoardScore[] {
+  const visited = new Set<string>();
+
   const words = [] as ReturnType<typeof getScoredWords>;
   for (const line of board.nodes) {
     for (const node of line) {
@@ -24,16 +26,28 @@ export function findAllWords(
         debug("Starting at node", node.char, node.coords, "turn", mover);
       if (node.isCleared) {
         node.isCleared = false;
+        const originalProbability = board.probability;
+        board.probability = originalProbability * (1 / 26);
         for (const letter of LETTERS) {
           node.char = letter;
+
           words.push(
-            ...getScoredWords(board, node, [], dictionary, mover, 1 / 26, false)
+            ...getScoredWords(
+              board,
+              node,
+              [],
+              dictionary,
+              visited,
+              mover,
+              false
+            )
           );
         }
+        board.probability = originalProbability;
         node.isCleared = true;
       } else {
         words.push(
-          ...getScoredWords(board, node, [], dictionary, mover, 1, false)
+          ...getScoredWords(board, node, [], dictionary, visited, mover, false)
         );
       }
 
@@ -46,11 +60,16 @@ export function findAllWords(
         ) {
           continue;
         }
+        if (neighbor.char === node.char) {
+          continue;
+        }
+
         node.swapWith(neighbor);
         if (debug.enabled)
           debug("Starting at swapped node", node.char, node.coords);
+
         words.push(
-          ...getScoredWords(board, node, [], dictionary, mover, 1, true)
+          ...getScoredWords(board, node, [], dictionary, visited, mover, true)
         );
         node.swapWith(neighbor, true);
       }
@@ -66,15 +85,22 @@ function getScoredWords(
   node: BoardNode,
   accumulation: BoardNode[],
   dictionary: Trie,
+  visited: Set<string>,
   mover: "red" | "blue",
-  probability: number,
   hasSwapped: boolean
 ): BoardScore[] {
-  if (probability < 0.01) {
+  const boardHash = board.hash(mover, accumulation);
+  if (visited.has(boardHash)) {
+    debug("Already visited", boardHash);
+    return [];
+  }
+  visited.add(boardHash);
+
+  if (node.used || node.isOpposingColor(mover)) {
     return [];
   }
 
-  if (node.used || node.isOpposingColor(mover)) {
+  if (board.probability < 0.01) {
     return [];
   }
 
@@ -92,7 +118,7 @@ function getScoredWords(
       const accumulatedString = getStringFromNodes(accumulation);
       if (dictionary.contains(accumulatedString)) {
         if (debug.enabled) debug("Found word:", accumulatedString);
-        words.push(scoreBoard(board, new Word(accumulation), probability));
+        words.push(scoreBoard(board, new Word(accumulation)));
       }
 
       // Check if the trie contains the accumulation
@@ -132,6 +158,10 @@ function getScoredWords(
               continue;
             }
 
+            if (neighbor.char === neighborNeighbor.char) {
+              continue;
+            }
+
             neighbor.swapWith(neighborNeighbor);
             words.push(
               ...getScoredWords(
@@ -139,8 +169,8 @@ function getScoredWords(
                 neighbor,
                 accumulation,
                 dictionary,
+                visited,
                 mover,
-                probability,
                 true
               )
             );
@@ -158,8 +188,8 @@ function getScoredWords(
             neighbor,
             accumulation,
             dictionary,
+            visited,
             mover,
-            probability,
             hasSwapped
           )
         );
@@ -174,6 +204,8 @@ function getScoredWords(
 
     const originalChar = node.char;
     node.isCleared = false;
+    const originalProbability = board.probability;
+    board.probability = originalProbability * (1 / 26);
     for (const letter of LETTERS) {
       node.char = letter;
 
@@ -183,12 +215,13 @@ function getScoredWords(
           node,
           accumulation,
           dictionary,
+          visited,
           mover,
-          probability * (1 / 26),
           hasSwapped
         )
       );
     }
+    board.probability = originalProbability;
     node.char = originalChar;
     node.isCleared = true;
   }

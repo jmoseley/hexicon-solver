@@ -45,7 +45,7 @@ export function printBoard(
   return boardFromTemplate(
     letters,
     word?.toString(),
-    `Hexagons: R: ${score?.redHexagonCount} B: ${score?.blueHexagonCount} Remaining: R: ${score?.redSquaresRemaining} B: ${score?.blueSquaresRemaining}`
+    `Hexagons: R: ${score?.redHexagonCount} B: ${score?.blueHexagonCount} Score: R: ${board.redScore} B: ${board.blueScore}`
   );
 }
 
