@@ -1,6 +1,5 @@
 import debugFactory from "debug";
 import { Color } from "./extract_colors";
-import { printBoard } from "./format";
 import { question } from "./util";
 
 // Expected lengths of the extracted lines. Lets the user correct
@@ -32,7 +31,8 @@ export class Board {
   public redScore = 0;
   public blueScore = 0;
   public probability = 1;
-  constructor(public nodes: BoardNode[][]) {}
+  public nodes: BoardNode[][] = [];
+  constructor() {}
 
   static async create(
     text: string,
@@ -88,11 +88,17 @@ export class Board {
 
     if (debug.enabled) debug("lines", lines);
 
-    const nodes = lines.map((line, lineNum) =>
-      line.map(({ char, color }) => new BoardNode(char, color))
-    );
+    const board = new Board();
 
-    return this.createFromNodes(nodes, blueScore, redScore);
+    const nodes = lines.map((line, lineNum) =>
+      line.map(
+        ({ char, color }, nodeNum) =>
+          new BoardNode(char, color, [lineNum, nodeNum], board)
+      )
+    );
+    board.nodes = nodes;
+
+    return board;
   }
 
   static createFromNodes(
@@ -100,76 +106,23 @@ export class Board {
     blueScore: number,
     redScore: number
   ) {
-    const board = new Board(nodes);
-    board.redScore = redScore;
+    const board = new Board();
+    board.nodes = nodes.map((line) =>
+      line.map((node) => {
+        return node.clone(board);
+      })
+    );
     board.blueScore = blueScore;
-
-    for (const [lineNum, line] of nodes.entries()) {
-      if (debug.enabled) debug("lineNum", lineNum);
-      for (const [nodeNum, node] of line.entries()) {
-        node.setCoords([lineNum, nodeNum]);
-        if (debug.enabled) debug("For node: ", node.char);
-
-        // This is the upper area
-        if (lineNum < 3) {
-          node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-          if (debug.enabled)
-            debug(`1. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
-          node.addNeighbor(nodes[lineNum + 1]?.[nodeNum + 1]);
-          if (debug.enabled)
-            debug(`2. Added ${nodes[lineNum + 1]?.[nodeNum + 1]?.char}`);
-          node.addNeighbor(nodes[lineNum + 2]?.[nodeNum + 1]);
-          if (debug.enabled)
-            debug(`3. Added ${nodes[lineNum + 2]?.[nodeNum + 1]?.char}`);
-        }
-        // this is the mid area
-        else if (lineNum < 12) {
-          if (line.length === 4) {
-            node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-            if (debug.enabled)
-              debug(`1. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
-            node.addNeighbor(nodes[lineNum + 1]?.[nodeNum + 1]);
-            if (debug.enabled)
-              debug(`2. Added ${nodes[lineNum + 1][nodeNum + 1]?.char}`);
-            node.addNeighbor(nodes[lineNum + 2]?.[nodeNum]);
-            if (debug.enabled)
-              debug(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
-          } else {
-            node.addNeighbor(nodes[lineNum + 1]?.[nodeNum - 1]);
-            if (debug.enabled)
-              debug(`1. Added ${nodes[lineNum + 1][nodeNum - 1]?.char}`);
-            node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-            if (debug.enabled)
-              debug(`2. Added ${nodes[lineNum + 1][nodeNum]?.char}`);
-            node.addNeighbor(nodes[lineNum + 2]?.[nodeNum]);
-            if (debug.enabled)
-              debug(`3. Added ${nodes[lineNum + 2][nodeNum]?.char}`);
-          }
-        }
-        // this is the lower area
-        else {
-          node.addNeighbor(nodes[lineNum + 1]?.[nodeNum - 1]);
-          if (debug.enabled)
-            debug(`1. Added ${nodes[lineNum + 1]?.[nodeNum - 1]?.char}`);
-          node.addNeighbor(nodes[lineNum + 1]?.[nodeNum]);
-          if (debug.enabled)
-            debug(`2. Added ${nodes[lineNum + 1]?.[nodeNum]?.char}`);
-          node.addNeighbor(nodes[lineNum + 2]?.[nodeNum - 1]);
-          if (debug.enabled)
-            debug(`3. Added ${nodes[lineNum + 2]?.[nodeNum - 1]?.char}`);
-        }
-      }
-    }
-
+    board.redScore = redScore;
     return board;
   }
 
-  hash(mover: "red" | "blue", accumulation: BoardNode[]) {
+  hash(node: BoardNode, mover: "red" | "blue", accumulation: BoardNode[]) {
     return (
+      node.char +
+      JSON.stringify(node.coords) +
       mover +
-      accumulation
-        .map((node) => JSON.stringify(node.coords) + node.char)
-        .join("") +
+      accumulation.map((node) => node.char).join("") +
       this.nodes
         .map((line) =>
           line
@@ -193,11 +146,16 @@ export class Board {
   }
 
   clone() {
-    return Board.createFromNodes(
-      this.nodes.map((line) => line.map((node) => node.clone())),
-      this.blueScore,
-      this.redScore
-    );
+    return Board.createFromNodes(this.nodes, this.blueScore, this.redScore);
+  }
+
+  getNeighbors(coords: Coords | BoardNode) {
+    if (coords instanceof BoardNode) {
+      coords = coords.coords;
+    }
+    const neighborCoords = NODE_TO_NEIGHBOR_COORDS[coords[0]][coords[1]];
+
+    return neighborCoords.map((coords) => this.getNode(coords));
   }
 }
 
@@ -217,35 +175,35 @@ function getShortColor(color: Color): string {
 }
 
 export class BoardNode {
-  public neighbors = [] as BoardNode[];
   public used = false;
-  public coords: [number, number] = [-1, -1];
   public swappedWith: [number, number] | null = null;
   public isCleared: boolean = false;
-  constructor(public char: string, private nodeColor: Color = "none") {}
-
-  addNeighbor(node?: BoardNode, skipBackLink = false) {
-    if (!node) {
-      return;
-    }
-
-    this.neighbors.push(node);
-    if (!skipBackLink) {
-      node.addNeighbor(this, true);
-    }
-  }
+  constructor(
+    public char: string,
+    private nodeColor: Color = "none",
+    public coords: Coords,
+    private board?: Board
+  ) {}
 
   get amSwapped() {
     return this.swappedWith !== null;
   }
 
-  swapWith(node: BoardNode, backSwap: boolean = false) {
-    if (!backSwap) {
-      this.swappedWith = node.coords;
-      node.swappedWith = this.coords;
-    } else {
+  get neighbors() {
+    if (!this.board) {
+      return [];
+    }
+
+    return this.board.getNeighbors(this);
+  }
+
+  swapWith(node: BoardNode, unswap: boolean = false) {
+    if (unswap) {
       this.swappedWith = null;
       node.swappedWith = null;
+    } else {
+      this.swappedWith = node.coords;
+      node.swappedWith = this.coords;
     }
 
     const tempChar = this.char;
@@ -426,8 +384,8 @@ export class BoardNode {
     this.isCleared = true;
   }
 
-  clone() {
-    const node = new BoardNode(this.char, this.color);
+  clone(board?: Board) {
+    const node = new BoardNode(this.char, this.color, [...this.coords], board);
     node.used = this.used;
     node.coords = this.coords;
     node.swappedWith = this.swappedWith
@@ -475,3 +433,474 @@ export class Word {
 function compareCoords(node1: Coords, node2: Coords) {
   return node1[0] === node2[0] && node1[1] === node2[1];
 }
+
+const NODE_TO_NEIGHBOR_COORDS: Coords[][][] = [
+  [
+    [
+      [1, 0],
+      [1, 1],
+      [2, 1],
+    ],
+  ],
+  [
+    [
+      [0, 0],
+      [2, 0],
+      [2, 1],
+      [3, 1],
+    ],
+    [
+      [0, 0],
+      [2, 1],
+      [2, 2],
+      [3, 2],
+    ],
+  ],
+  [
+    [
+      [1, 0],
+      [3, 0],
+      [3, 1],
+      [4, 1],
+    ],
+    [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [3, 1],
+      [3, 2],
+      [4, 2],
+    ],
+    [
+      [1, 1],
+      [3, 2],
+      [3, 3],
+      [4, 3],
+    ],
+  ],
+  [
+    [
+      [2, 0],
+      [4, 0],
+      [4, 1],
+      [5, 0],
+    ],
+    [
+      [1, 0],
+      [2, 0],
+      [2, 1],
+      [4, 1],
+      [4, 2],
+      [5, 1],
+    ],
+    [
+      [1, 1],
+      [2, 1],
+      [2, 2],
+      [4, 2],
+      [4, 3],
+      [5, 2],
+    ],
+    [
+      [2, 2],
+      [4, 3],
+      [4, 4],
+      [5, 3],
+    ],
+  ],
+  [
+    [
+      [3, 0],
+      [5, 0],
+      [6, 0],
+    ],
+    [
+      [2, 0],
+      [3, 0],
+      [3, 1],
+      [5, 0],
+      [5, 1],
+      [6, 1],
+    ],
+    [
+      [2, 1],
+      [3, 1],
+      [3, 2],
+      [5, 1],
+      [5, 2],
+      [6, 2],
+    ],
+    [
+      [2, 2],
+      [3, 2],
+      [3, 3],
+      [5, 2],
+      [5, 3],
+      [6, 3],
+    ],
+    [
+      [3, 3],
+      [5, 3],
+      [6, 4],
+    ],
+  ],
+  [
+    [
+      [3, 0],
+      [4, 0],
+      [4, 1],
+      [6, 0],
+      [6, 1],
+      [7, 0],
+    ],
+    [
+      [3, 1],
+      [4, 1],
+      [4, 2],
+      [6, 1],
+      [6, 2],
+      [7, 1],
+    ],
+    [
+      [3, 2],
+      [4, 2],
+      [4, 3],
+      [6, 2],
+      [6, 3],
+      [7, 2],
+    ],
+    [
+      [3, 3],
+      [4, 3],
+      [4, 4],
+      [6, 3],
+      [6, 4],
+      [7, 3],
+    ],
+  ],
+  [
+    [
+      [4, 0],
+      [5, 0],
+      [7, 0],
+      [8, 0],
+    ],
+    [
+      [4, 1],
+      [5, 0],
+      [5, 1],
+      [7, 0],
+      [7, 1],
+      [8, 1],
+    ],
+    [
+      [4, 2],
+      [5, 1],
+      [5, 2],
+      [7, 1],
+      [7, 2],
+      [8, 2],
+    ],
+    [
+      [4, 3],
+      [5, 2],
+      [5, 3],
+      [7, 2],
+      [7, 3],
+      [8, 3],
+    ],
+    [
+      [4, 4],
+      [5, 3],
+      [7, 3],
+      [8, 4],
+    ],
+  ],
+  [
+    [
+      [5, 0],
+      [6, 0],
+      [6, 1],
+      [8, 0],
+      [8, 1],
+      [9, 0],
+    ],
+    [
+      [5, 1],
+      [6, 1],
+      [6, 2],
+      [8, 1],
+      [8, 2],
+      [9, 1],
+    ],
+    [
+      [5, 2],
+      [6, 2],
+      [6, 3],
+      [8, 2],
+      [8, 3],
+      [9, 2],
+    ],
+    [
+      [5, 3],
+      [6, 3],
+      [6, 4],
+      [8, 3],
+      [8, 4],
+      [9, 3],
+    ],
+  ],
+  [
+    [
+      [6, 0],
+      [7, 0],
+      [9, 0],
+      [10, 0],
+    ],
+    [
+      [6, 1],
+      [7, 0],
+      [7, 1],
+      [9, 0],
+      [9, 1],
+      [10, 1],
+    ],
+    [
+      [6, 2],
+      [7, 1],
+      [7, 2],
+      [9, 1],
+      [9, 2],
+      [10, 2],
+    ],
+    [
+      [6, 3],
+      [7, 2],
+      [7, 3],
+      [9, 2],
+      [9, 3],
+      [10, 3],
+    ],
+    [
+      [6, 4],
+      [7, 3],
+      [9, 3],
+      [10, 4],
+    ],
+  ],
+  [
+    [
+      [7, 0],
+      [8, 0],
+      [8, 1],
+      [10, 0],
+      [10, 1],
+      [11, 0],
+    ],
+    [
+      [7, 1],
+      [8, 1],
+      [8, 2],
+      [10, 1],
+      [10, 2],
+      [11, 1],
+    ],
+    [
+      [7, 2],
+      [8, 2],
+      [8, 3],
+      [10, 2],
+      [10, 3],
+      [11, 2],
+    ],
+    [
+      [7, 3],
+      [8, 3],
+      [8, 4],
+      [10, 3],
+      [10, 4],
+      [11, 3],
+    ],
+  ],
+  [
+    [
+      [8, 0],
+      [9, 0],
+      [11, 0],
+      [12, 0],
+    ],
+    [
+      [8, 1],
+      [9, 0],
+      [9, 1],
+      [11, 0],
+      [11, 1],
+      [12, 1],
+    ],
+    [
+      [8, 2],
+      [9, 1],
+      [9, 2],
+      [11, 1],
+      [11, 2],
+      [12, 2],
+    ],
+    [
+      [8, 3],
+      [9, 2],
+      [9, 3],
+      [11, 2],
+      [11, 3],
+      [12, 3],
+    ],
+    [
+      [8, 4],
+      [9, 3],
+      [11, 3],
+      [12, 4],
+    ],
+  ],
+  [
+    [
+      [9, 0],
+      [10, 0],
+      [10, 1],
+      [12, 0],
+      [12, 1],
+      [13, 0],
+    ],
+    [
+      [9, 1],
+      [10, 1],
+      [10, 2],
+      [12, 1],
+      [12, 2],
+      [13, 1],
+    ],
+    [
+      [9, 2],
+      [10, 2],
+      [10, 3],
+      [12, 2],
+      [12, 3],
+      [13, 2],
+    ],
+    [
+      [9, 3],
+      [10, 3],
+      [10, 4],
+      [12, 3],
+      [12, 4],
+      [13, 3],
+    ],
+  ],
+  [
+    [
+      [10, 0],
+      [11, 0],
+      [13, 0],
+    ],
+    [
+      [10, 1],
+      [11, 0],
+      [11, 1],
+      [13, 0],
+      [13, 1],
+      [14, 0],
+    ],
+    [
+      [10, 2],
+      [11, 1],
+      [11, 2],
+      [13, 1],
+      [13, 2],
+      [14, 1],
+    ],
+    [
+      [10, 3],
+      [11, 2],
+      [11, 3],
+      [13, 2],
+      [13, 3],
+      [14, 2],
+    ],
+    [
+      [10, 4],
+      [11, 3],
+      [13, 3],
+    ],
+  ],
+  [
+    [
+      [11, 0],
+      [12, 0],
+      [12, 1],
+      [14, 0],
+    ],
+    [
+      [11, 1],
+      [12, 1],
+      [12, 2],
+      [14, 0],
+      [14, 1],
+      [15, 0],
+    ],
+    [
+      [11, 2],
+      [12, 2],
+      [12, 3],
+      [14, 1],
+      [14, 2],
+      [15, 1],
+    ],
+    [
+      [11, 3],
+      [12, 3],
+      [12, 4],
+      [14, 2],
+    ],
+  ],
+  [
+    [
+      [12, 1],
+      [13, 0],
+      [13, 1],
+      [15, 0],
+    ],
+    [
+      [12, 2],
+      [13, 1],
+      [13, 2],
+      [15, 0],
+      [15, 1],
+      [16, 0],
+    ],
+    [
+      [12, 3],
+      [13, 2],
+      [13, 3],
+      [15, 1],
+    ],
+  ],
+  [
+    [
+      [13, 1],
+      [14, 0],
+      [14, 1],
+      [16, 0],
+    ],
+    [
+      [13, 2],
+      [14, 1],
+      [14, 2],
+      [16, 0],
+    ],
+  ],
+  [
+    [
+      [14, 1],
+      [15, 0],
+      [15, 1],
+    ],
+  ],
+];

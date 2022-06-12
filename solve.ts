@@ -89,7 +89,7 @@ function getScoredWords(
   mover: "red" | "blue",
   hasSwapped: boolean
 ): BoardScore[] {
-  const boardHash = board.hash(mover, accumulation);
+  const boardHash = board.hash(node, mover, accumulation);
   if (visited.has(boardHash)) {
     debug("Already visited", boardHash);
     return [];
@@ -161,6 +161,15 @@ function getScoredWords(
             if (neighbor.char === neighborNeighbor.char) {
               continue;
             }
+
+            if (debug.enabled)
+              debug(
+                "Swapping",
+                neighbor.char,
+                neighbor.coords,
+                neighborNeighbor.char,
+                neighborNeighbor.coords
+              );
 
             neighbor.swapWith(neighborNeighbor);
             words.push(
