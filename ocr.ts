@@ -27,7 +27,8 @@ export async function extractTextFromScreenshot(
 export async function extractCurrentScoreFromScreenshot(filename: string) {
   // Crop out just the board in the center, and crank the
   // contrast to make it easier to ocr
-  const imageData = await cropImageToScore(filename).toBuffer();
+  const leftImageData = await cropImageToScore(filename, "left").toBuffer();
+  const rightImageData = await cropImageToScore(filename, "right").toBuffer();
   const worker = Tesseract.createWorker({});
   await worker.load();
   await worker.loadLanguage("eng");
@@ -36,14 +37,13 @@ export async function extractCurrentScoreFromScreenshot(filename: string) {
     // tessedit_pageseg_mode: Tesseract.PSM.AUTO_ONLY,
     tessedit_char_whitelist: "0123456789 ",
   });
-  const output = await worker.recognize(imageData);
+  const leftOutput = await worker.recognize(leftImageData);
+  const rightOutput = await worker.recognize(rightImageData);
   await worker.terminate();
 
-  const parts = output.data.text.split(" ");
-
   return {
-    blueScore: parts[0] && parts[0].length > 0 ? parseInt(parts[0]) : undefined,
-    redScore: parts[1] && parts[1].length > 0 ? parseInt(parts[1]) : undefined,
+    blueScore: parseInt(leftOutput.data.text),
+    redScore: parseInt(rightOutput.data.text),
   };
 }
 

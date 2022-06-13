@@ -51570,9 +51570,6 @@ epigraphy
 epigynies
 epigynous
 epigyny
-epilate
-epilated
-epilates
 epilating
 epilation
 epilations

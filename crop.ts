@@ -6,24 +6,33 @@ export function cropImageToBoard(filename: string): sharp.Sharp {
     .greyscale()
     .threshold(80);
 }
-export function cropImageToScore(filename: string): sharp.Sharp {
+export function cropImageToScore(
+  filename: string,
+  side: "left" | "right"
+): sharp.Sharp {
   return sharp(filename)
     .extract({
-      width: 600,
+      width: 300,
       height: 200,
-      left: 250,
+      left: side === "left" ? 250 : 550,
       top: 150,
     })
     .greyscale()
     .threshold(200);
 }
 
-async function cropToFile(filename: string, outputFilename: string) {
-  await cropImageToBoard(filename).toFile(outputFilename);
+async function cropToFile(
+  transform: () => sharp.Sharp,
+  outputFilename: string
+) {
+  await transform().toFile(outputFilename);
 }
 
 async function main() {
-  await cropToFile("sample.png", "cropped-screenshot.png");
+  await cropToFile(
+    () => cropImageToScore("sample.png", "left"),
+    "cropped-screenshot.png"
+  );
 }
 
 if (require.main === module) {
