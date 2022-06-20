@@ -2,12 +2,6 @@ import debugFactory from "debug";
 import { Color } from "./extract_colors";
 import { question } from "./util";
 
-// Expected lengths of the extracted lines. Lets the user correct
-// if things are missed. (Likely "I" will be missed by the OCR)
-const EXPECTED_LINE_LENGTHS = [
-  1, 2, 3, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 3, 2, 1,
-];
-
 const debug = debugFactory("board");
 const debugScore = debugFactory("scoreBoard");
 const debugSuper = debugFactory("superhexagon");
@@ -35,49 +29,11 @@ export class Board {
   constructor() {}
 
   static async create(
-    text: string,
+    lines: string[][],
     colors: Color[],
     blueScore: number | undefined,
     redScore: number | undefined
   ) {
-    // validate the text input first
-    const linesRaw = text.split("\n").filter((line) => line.length > 0);
-    if (debug.enabled) debug("linesRaw", linesRaw);
-    if (linesRaw.length !== EXPECTED_LINE_LENGTHS.length) {
-      throw new Error(
-        `Expected ${EXPECTED_LINE_LENGTHS.length} lines, got ${linesRaw.length}`
-      );
-    }
-    const lines = [] as { char: string; color: Color }[][];
-
-    // Validate each line is the right length, and ask the user
-    // to correct any that aren't.
-    let colorPosition = 0;
-    for (const [idx, lineStr] of linesRaw.entries()) {
-      const line = lineStr.split("").filter((word) => word.trim().length > 0);
-
-      if (line.length !== EXPECTED_LINE_LENGTHS[idx]) {
-        console.info(
-          `Line ${idx} is ${line.length} characters long, expected ${EXPECTED_LINE_LENGTHS[idx]}.`
-        );
-
-        const newLine = await question(`Enter new line (got ${line}): `);
-        lines[idx] = newLine.split("").map((char) => {
-          return {
-            char: char.toUpperCase().trim(),
-            color: colors[colorPosition++],
-          };
-        });
-      } else {
-        lines[idx] = line.map((char) => {
-          return {
-            char: char.toUpperCase().trim(),
-            color: colors[colorPosition++],
-          };
-        });
-      }
-    }
-
     if (blueScore === undefined) {
       blueScore = parseInt(await question("Enter blue score: "));
     }
@@ -90,12 +46,21 @@ export class Board {
 
     const board = new Board();
 
-    const nodes = lines.map((line, lineNum) =>
-      line.map(
-        ({ char, color }, nodeNum) =>
-          new BoardNode(char, color, [lineNum, nodeNum], board)
-      )
-    );
+    let colorPosition = 0;
+    const nodes: BoardNode[][] = [];
+    for (const [lineNum, line] of lines.entries()) {
+      nodes[lineNum] = [];
+      for (const [nodeNum, char] of line.entries()) {
+        const node = new BoardNode(
+          char,
+          colors[colorPosition],
+          [lineNum, nodeNum],
+          board
+        );
+        nodes[lineNum][nodeNum] = node;
+        colorPosition++;
+      }
+    }
     board.nodes = nodes;
 
     return board;

@@ -83,8 +83,13 @@ function isWithin(value: number, target: number, tolerance: number) {
   return value >= target - tolerance && value <= target + tolerance;
 }
 
-export async function extractHexColor(filename: string): Promise<Color[]> {
+export async function extractHexColor(
+  filename: string,
+  lettersBoard: string[][]
+): Promise<Color[]> {
   const results = [] as Color[];
+
+  const letters = lettersBoard.flat();
 
   for (const [idx, coords] of COORDINATES.entries()) {
     const imageData = await sharp(filename)
@@ -110,7 +115,9 @@ export async function extractHexColor(filename: string): Promise<Color[]> {
       continue;
     } else {
       const newColor = await question(
-        `What color is character ${idx + 1} ${total}? `
+        `What color is character ${letters[idx]} at position ${
+          idx + 1
+        } (${total})? `
       );
 
       if (newColor === "none" || newColor === "" || newColor === "grey") {

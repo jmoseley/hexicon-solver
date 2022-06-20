@@ -17,7 +17,7 @@ async function main() {
 
   const dictionary = loadWords();
   const text = await extractTextFromScreenshot(screenshot);
-  const colors = await extractHexColor(screenshot);
+  const colors = await extractHexColor(screenshot, text);
 
   const currentScore = await extractCurrentScoreFromScreenshot(screenshot);
   console.info("Extracted current score:", currentScore);
