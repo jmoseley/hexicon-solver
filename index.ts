@@ -31,6 +31,10 @@ async function main() {
 
   const sorted = getResults(parsedBoard, dictionary);
 
+  if (!sorted) {
+    return;
+  }
+
   for (const [idx, { word, board, ...rest }] of sorted.entries()) {
     console.info(printBoard(parsedBoard, word, rest));
     if (idx < sorted.length - 1) {
@@ -50,6 +54,9 @@ function getResults(parsedBoard: Board, dictionary: Trie) {
   const command = process.env.COMMAND || "";
 
   switch (command) {
+    case "extract":
+      console.info(JSON.stringify(parsedBoard.toJson(), null, 2));
+      return;
     case "":
     case "solve":
       return findAllWords(parsedBoard, dictionary, "blue").sort(

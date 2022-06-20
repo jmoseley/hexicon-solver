@@ -122,6 +122,16 @@ export class Board {
 
     return neighborCoords.map((coords) => this.getNode(coords));
   }
+
+  toJson() {
+    return {
+      score: {
+        blue: this.blueScore,
+        red: this.redScore,
+      },
+      nodes: this.nodes.map((line) => line.map((node) => node.toJson())),
+    };
+  }
 }
 
 function getShortColor(color: Color): string {
@@ -358,6 +368,13 @@ export class BoardNode {
       : null;
 
     return node;
+  }
+
+  toJson() {
+    return {
+      char: this.char,
+      color: this.color,
+    };
   }
 }
 
