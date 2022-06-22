@@ -1,3 +1,6 @@
+import yesno from "yesno";
+import * as fs from "fs";
+
 import { Board } from "./board";
 import { loadWords } from "./util";
 import {
@@ -8,7 +11,6 @@ import { findAllWords } from "./solve";
 import { printBoard } from "./format";
 import { extractHexColor } from "./extract_colors";
 import * as solve from "./score";
-import yesno from "yesno";
 import { Trie } from "./trie";
 import { miniMax } from "./minimax";
 
@@ -21,8 +23,7 @@ async function main() {
 
   const currentScore = await extractCurrentScoreFromScreenshot(screenshot);
   console.info("Extracted current score:", currentScore);
-
-  const parsedBoard = await Board.create(
+  const parsedBoard = Board.create(
     text,
     colors,
     currentScore.blueScore,
@@ -55,7 +56,10 @@ function getResults(parsedBoard: Board, dictionary: Trie) {
 
   switch (command) {
     case "extract":
-      console.info(JSON.stringify(parsedBoard.toJson(), null, 2));
+      fs.writeFileSync(
+        "parsed_board.json",
+        JSON.stringify(parsedBoard.toJson(), null, 2)
+      );
       return;
     case "":
     case "solve":
