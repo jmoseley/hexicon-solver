@@ -8,7 +8,7 @@
     "solve": "ts-node index.ts",
     "grow": "COMMAND=grow ts-node index.ts",
     "extract": "COMMAND=extract ts-node index.ts",
-    "minimax": "cat parsed_board.json | go run .",
+    "minimax": "time cat parsed_board.json | go run .",
     "crop": "ts-node crop.ts",
     "ocr": "ts-node ocr.ts"
   },
