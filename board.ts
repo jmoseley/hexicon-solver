@@ -1,6 +1,5 @@
 import debugFactory from "debug";
 import { Color } from "./extract_colors";
-import { question } from "./util";
 
 const debug = debugFactory("board");
 const debugScore = debugFactory("scoreBoard");
@@ -22,29 +21,19 @@ type Coords = [number, number];
 
 // Graph to represent the hexagonal board
 export class Board {
-  public redScore = 0;
-  public blueScore = 0;
   public probability = 1;
   public nodes: BoardNode[][] = [];
-  constructor() {}
+  constructor(public redScore: number, public blueScore: number) {}
 
-  static async create(
+  static create(
     lines: string[][],
     colors: Color[],
-    blueScore: number | undefined,
-    redScore: number | undefined
+    blueScore: number,
+    redScore: number
   ) {
-    if (blueScore === undefined) {
-      blueScore = parseInt(await question("Enter blue score: "));
-    }
-
-    if (redScore === undefined) {
-      redScore = parseInt(await question("Enter red score: "));
-    }
-
     if (debug.enabled) debug("lines", lines);
 
-    const board = new Board();
+    const board = new Board(redScore, blueScore);
 
     let colorPosition = 0;
     const nodes: BoardNode[][] = [];
@@ -71,7 +60,7 @@ export class Board {
     blueScore: number,
     redScore: number
   ) {
-    const board = new Board();
+    const board = new Board(redScore, blueScore);
     board.nodes = nodes.map((line) =>
       line.map((node) => {
         return node.clone(board);

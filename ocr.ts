@@ -85,9 +85,20 @@ export async function extractCurrentScoreFromScreenshot(filename: string) {
   const rightOutput = await worker.recognize(rightImageData);
   await worker.terminate();
 
+  let blueScore = parseInt(leftOutput.data.text);
+  let redScore = parseInt(rightOutput.data.text);
+
+  if (blueScore === undefined) {
+    blueScore = parseInt(await question("Enter blue score: "));
+  }
+
+  if (redScore === undefined) {
+    redScore = parseInt(await question("Enter red score: "));
+  }
+
   return {
-    blueScore: parseInt(leftOutput.data.text),
-    redScore: parseInt(rightOutput.data.text),
+    blueScore,
+    redScore,
   };
 }
 
