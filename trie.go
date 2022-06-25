@@ -1,6 +1,8 @@
 package main
 
-import "strings"
+import (
+	"strings"
+)
 
 const (
 	//ALBHABET_SIZE total characters in english alphabet
@@ -33,11 +35,11 @@ func initTrie() *Trie {
 }
 
 func (t *Trie) insert(word string) {
-	word = strings.ToLower(word)
+	word = strings.ToUpper(word)
 	wordLength := len(word)
 	current := t.root
 	for i := 0; i < wordLength; i++ {
-		index := word[i] - 'a'
+		index := word[i] - 'A'
 		if current.childrens[index] == nil {
 			current.childrens[index] = &trieNode{}
 		}
@@ -54,16 +56,15 @@ type FindResult struct {
 	IsPrefix bool
 }
 
-func (t *Trie) Find(word string) FindResult {
-	word = strings.ToLower(word)
+func (t *Trie) Find(nodes []*BoardNode) FindResult {
 	result := FindResult{
 		IsWord:   false,
 		IsPrefix: false,
 	}
-	wordLength := len(word)
+	wordLength := len(nodes)
 	current := t.root
 	for i := 0; i < wordLength; i++ {
-		index := word[i] - 'a'
+		index := nodes[i].Letter - 'A'
 		if current.childrens[index] == nil {
 			return result
 		}

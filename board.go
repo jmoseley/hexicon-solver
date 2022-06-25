@@ -1,5 +1,12 @@
 package main
 
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+)
+
 type Color string
 
 const (
@@ -16,7 +23,8 @@ type BoardScore struct {
 }
 
 type BoardNode struct {
-	Letter  string `json:"char"`
+	Letter  byte
+	Char    string `json:"char"`
 	Color   Color  `json:"color"`
 	cleared bool
 	used    bool
@@ -24,28 +32,33 @@ type BoardNode struct {
 }
 
 type Board struct {
-	Score BoardScore     `json:"score"`
-	Nodes [][]*BoardNode `json:"nodes"`
+	Score       BoardScore     `json:"score"`
+	Nodes       [][]*BoardNode `json:"nodes"`
+	probability float64
+	neighbors   [][][]*BoardNode
 }
 
 func (b *Board) Initialize() {
+	b.probability = 1.0
 	// Set the node coordinates
 	for lineNum := 0; lineNum < len(b.Nodes); lineNum++ {
 		for nodeNum := 0; nodeNum < len(b.Nodes[lineNum]); nodeNum++ {
 			b.Nodes[lineNum][nodeNum].coords = []int{lineNum, nodeNum}
 			b.Nodes[lineNum][nodeNum].used = false
 			b.Nodes[lineNum][nodeNum].cleared = false
-
 		}
 	}
 }
 
 func (b *Board) Play(word Word, mover Mover) *Board {
+	// fmt.Println("Playing", word, "as", mover, "Red", b.Score.Red, "Blue", b.Score.Blue)
 	board := b.clone()
 	for _, letter := range word.letters {
 		node := board.Nodes[letter.coords[0]][letter.coords[1]]
 		if node.Color == None {
 			node.Color = mover.GetColor()
+		} else if !mover.IsMatching(node.Color) {
+			log.Fatal("Invalid move:", word, "as", mover, "at", letter.coords)
 		}
 	}
 
@@ -55,6 +68,7 @@ func (b *Board) Play(word Word, mover Mover) *Board {
 			node := board.Nodes[lineNum][nodeNum]
 			hexagon := node.checkHexagon(board)
 			if hexagon != "" {
+				// fmt.Println("Hexagon", node.coords, "is", hexagon)
 				hexagonCenters = append(hexagonCenters, node)
 				if hexagon == Red {
 					board.Score.Red++
@@ -66,7 +80,7 @@ func (b *Board) Play(word Word, mover Mover) *Board {
 	}
 
 	for _, node := range hexagonCenters {
-		node.clearHexagon(board)
+		node.clearHexagon(board, mover)
 	}
 
 	superHexagons := []*BoardNode{}
@@ -74,6 +88,7 @@ func (b *Board) Play(word Word, mover Mover) *Board {
 		for nodeNum := 0; nodeNum < len(board.Nodes[lineNum]); nodeNum++ {
 			node := board.Nodes[lineNum][nodeNum]
 			if node.isSuperHexagon(board) {
+				fmt.Println("Node", node.coords, "is", node.Color)
 				superHexagons = append(superHexagons, node)
 			}
 		}
@@ -83,35 +98,49 @@ func (b *Board) Play(word Word, mover Mover) *Board {
 		node.clearSuperHexagon(board)
 	}
 
+	// if (board.Score.Red != b.Score.Red) || (board.Score.Blue != b.Score.Blue) {
+	// 	log.Println("Score: Red", board.Score.Red, "Blue", board.Score.Blue)
+	// }
+
 	return board
 }
 
 func (b *Board) GetNeighbors(nodeCoord []int) []*BoardNode {
-	neighbors := []*BoardNode{}
-	neighbor_coords := coords_to_neighbors[nodeCoord[0]][nodeCoord[1]]
-
-	for _, coord := range neighbor_coords {
-		neighbors = append(neighbors, b.Nodes[coord[0]][coord[1]])
+	if b.neighbors == nil {
+		b.neighbors = make([][][]*BoardNode, len(b.Nodes))
 	}
+	if b.neighbors[nodeCoord[0]] == nil {
+		b.neighbors[nodeCoord[0]] = make([][]*BoardNode, len(b.Nodes[nodeCoord[0]]))
+	}
+	if b.neighbors[nodeCoord[0]][nodeCoord[1]] == nil {
+		neighbor_coords := coords_to_neighbors[nodeCoord[0]][nodeCoord[1]]
+		neighbors := []*BoardNode{}
 
-	return neighbors
+		for _, coord := range neighbor_coords {
+			neighbors = append(neighbors, b.Nodes[coord[0]][coord[1]])
+		}
+		b.neighbors[nodeCoord[0]][nodeCoord[1]] = neighbors
+		return neighbors
+	} else {
+		return b.neighbors[nodeCoord[0]][nodeCoord[1]]
+	}
 }
 
 func (n *BoardNode) checkHexagon(board *Board) Mover {
-	neighbors := board.GetNeighbors(n.coords)
-	if len(neighbors) != 6 {
+	if n.Color == None || n.Color == VeryRed || n.Color == VeryBlue {
 		return ""
 	}
-	if n.Color == None || n.Color == VeryRed || n.Color == VeryBlue {
+	neighbors := board.GetNeighbors(n.coords)
+	if len(neighbors) != 6 {
 		return ""
 	}
 
 	redCount := 0
 	blueCount := 0
 	if n.Color == Red {
-		redCount = 1
+		redCount++
 	} else if n.Color == Blue {
-		blueCount = 1
+		blueCount++
 	} else {
 		return ""
 	}
@@ -137,7 +166,8 @@ func (b *Board) clone() *Board {
 			Red:  b.Score.Red,
 			Blue: b.Score.Blue,
 		},
-		Nodes: make([][]*BoardNode, len(b.Nodes)),
+		Nodes:       make([][]*BoardNode, len(b.Nodes)),
+		probability: b.probability,
 	}
 	for lineNum := 0; lineNum < len(b.Nodes); lineNum++ {
 		board.Nodes[lineNum] = make([]*BoardNode, len(b.Nodes[lineNum]))
@@ -155,10 +185,10 @@ func (b *Board) clone() *Board {
 	return &board
 }
 
-func (n *BoardNode) clearHexagon(board *Board) {
-	if n.Color == Red {
+func (n *BoardNode) clearHexagon(board *Board, mover Mover) {
+	if mover == RedMover {
 		n.Color = VeryRed
-	} else if n.Color == Blue {
+	} else if mover == BlueMover {
 		n.Color = VeryBlue
 	}
 
@@ -195,6 +225,40 @@ func (n *BoardNode) clearSuperHexagon(board *Board) {
 		neighbor.Color = None
 		neighbor.cleared = true
 	}
+}
+
+func (n *BoardNode) UnmarshalJSON(data []byte) error {
+	type bn BoardNode
+	node := &bn{
+		used: false,
+	}
+
+	err := json.Unmarshal(data, node)
+	if err != nil {
+		return err
+	}
+	if len(node.Char) > 1 || len(node.Char) == 0 {
+		return errors.New(fmt.Sprintf("Invalid character: %s", node.Char))
+	}
+	node.Letter = node.Char[0]
+
+	*n = BoardNode(*node)
+	return nil
+}
+
+func (color *Color) UnmarshalJSON(b []byte) error {
+	// Define a secondary type to avoid ending up with a recursive call to json.Unmarshal
+	type C Color
+	var r *C = (*C)(color)
+	err := json.Unmarshal(b, &r)
+	if err != nil {
+		panic(err)
+	}
+	switch *color {
+	case None, Red, Blue, VeryBlue, VeryRed:
+		return nil
+	}
+	return errors.New("Invalid leave type")
 }
 
 var coords_to_neighbors = [][][][]int{

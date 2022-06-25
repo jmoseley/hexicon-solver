@@ -3,13 +3,31 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"runtime"
+	"runtime/pprof"
 )
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
+var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
+
 func main() {
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close() // error handling omitted for example
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
+
 	var board Board
 
 	err := json.NewDecoder(os.Stdin).Decode(&board)
@@ -33,41 +51,23 @@ func main() {
 	// Instantiate the trie
 	trie := CreateTrie(words)
 
-	result, err := ExecuteMinimax(board, trie)
+	result, err := ExecuteMinimax(&board, trie)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Print the result
 	fmt.Println(result.String())
-}
 
-func (n *BoardNode) UnmarshalJSON(data []byte) error {
-	type bn BoardNode
-	node := &bn{
-		used: false,
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal("could not create memory profile: ", err)
+		}
+		defer f.Close() // error handling omitted for example
+		runtime.GC()    // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
 	}
-
-	err := json.Unmarshal(data, node)
-	if err != nil {
-		return err
-	}
-
-	*n = BoardNode(*node)
-	return nil
-}
-
-func (color *Color) UnmarshalJSON(b []byte) error {
-	// Define a secondary type to avoid ending up with a recursive call to json.Unmarshal
-	type C Color
-	var r *C = (*C)(color)
-	err := json.Unmarshal(b, &r)
-	if err != nil {
-		panic(err)
-	}
-	switch *color {
-	case None, Red, Blue, VeryBlue, VeryRed:
-		return nil
-	}
-	return errors.New("Invalid leave type")
 }
