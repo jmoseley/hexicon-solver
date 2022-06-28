@@ -12,7 +12,7 @@ type WordLetter struct {
 }
 
 type Word struct {
-	letters []WordLetter
+	letters []*WordLetter
 }
 
 type Move struct {
@@ -52,7 +52,7 @@ func (w *Word) Has(coords []int) bool {
 func (w *Word) Get(coords []int) *WordLetter {
 	for _, letter := range w.letters {
 		if letter.coords[0] == coords[0] && letter.coords[1] == coords[1] {
-			return &letter
+			return letter
 		}
 	}
 	return nil

@@ -5,6 +5,8 @@ import (
 	"math"
 )
 
+const DEPTH = 3
+
 type Mover string
 
 const (
@@ -40,14 +42,16 @@ func ExecuteMinimax(board *Board, trie *Trie) (*Move, error) {
 	words := findWords(board, trie, BlueMover)
 
 	var bestMove *Move
+	alpha := math.MinInt
 	bestScore := board.Score.Blue
 	for _, word := range words {
 		updatedBoard := board.Play(word, BlueMover)
-		score := runMinimax(trie, updatedBoard, RedMover, math.MinInt, math.MaxInt, 2)
+		score := runMinimax(trie, updatedBoard, RedMover, alpha, math.MaxInt, DEPTH)
 		if score > bestScore || bestMove == nil {
 			fmt.Println("New best score:", score, "for word:", word.String())
-			bestMove = &Move{word: &word, board: updatedBoard}
+			bestMove = &Move{word: word, board: updatedBoard}
 			bestScore = score
+			alpha = max(alpha, score)
 		}
 	}
 
@@ -57,9 +61,9 @@ func ExecuteMinimax(board *Board, trie *Trie) (*Move, error) {
 func runMinimax(trie *Trie, board *Board, mover Mover, alpha int, beta int, depth int) int {
 	if depth == 0 {
 		if mover == RedMover {
-			return board.Score.Red
+			return board.Score.Red - board.Score.Blue
 		}
-		return board.Score.Blue
+		return board.Score.Blue - board.Score.Red
 	}
 
 	words := findWords(board, trie, mover)
@@ -105,8 +109,8 @@ func min(a int, b int) int {
 	return b
 }
 
-func findWords(board *Board, trie *Trie, mover Mover) []Word {
-	result := []Word{}
+func findWords(board *Board, trie *Trie, mover Mover) []*Word {
+	result := []*Word{}
 	accumulation := []*BoardNode{}
 	for lineNum := 0; lineNum < len(board.Nodes); lineNum++ {
 		for nodeNum := 0; nodeNum < len(board.Nodes[lineNum]); nodeNum++ {
@@ -123,8 +127,8 @@ func findWords(board *Board, trie *Trie, mover Mover) []Word {
 	return result
 }
 
-func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNode, accumulation []*BoardNode) []Word {
-	result := []Word{}
+func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNode, accumulation []*BoardNode) []*Word {
+	result := []*Word{}
 
 	if node.used {
 		return result
@@ -142,15 +146,15 @@ func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNo
 
 	wordFindResult := trie.Find(accumulation)
 	if wordFindResult.IsWord && len(accumulation) >= MIN_WORD_LENGTH {
-		word := Word{letters: []WordLetter{}}
+		word := Word{letters: []*WordLetter{}}
 		for idx, node := range accumulation {
 			if idx == 0 {
-				word.letters = append(word.letters, WordLetter{coords: node.coords, Letter: node.Letter, IsStart: true})
+				word.letters = append(word.letters, &WordLetter{coords: node.coords, Letter: node.Letter, IsStart: true})
 			} else {
-				word.letters = append(word.letters, WordLetter{coords: node.coords, Letter: node.Letter})
+				word.letters = append(word.letters, &WordLetter{coords: node.coords, Letter: node.Letter})
 			}
 		}
-		result = append(result, word)
+		result = append(result, &word)
 	}
 	if !wordFindResult.IsPrefix {
 		return result

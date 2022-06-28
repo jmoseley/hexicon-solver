@@ -54,7 +54,7 @@ func (b *Board) Initialize() {
 	}
 }
 
-func (b *Board) Play(word Word, mover Mover) *Board {
+func (b *Board) Play(word *Word, mover Mover) *Board {
 	// fmt.Println("Playing", word, "as", mover, "Red", b.Score.Red, "Blue", b.Score.Blue)
 	board := b.clone()
 	for _, letter := range word.letters {
