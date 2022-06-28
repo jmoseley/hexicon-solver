@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math"
-	"strings"
 )
 
 type Mover string
@@ -35,35 +34,6 @@ func (m Mover) IsMatching(c Color) bool {
 	return c == Blue || c == VeryBlue
 }
 
-type WordLetter struct {
-	coords []int
-	letter byte
-}
-
-type Word struct {
-	letters []WordLetter
-}
-
-type Move struct {
-	word Word
-}
-
-const MIN_WORD_LENGTH = 5
-
-func (m Move) String() string {
-	return m.word.String()
-}
-
-func (w Word) String() string {
-	// Join all the letters of the word
-	var b strings.Builder
-	b.Grow(len(w.letters))
-	for _, letter := range w.letters {
-		fmt.Fprintf(&b, "%c", letter.letter)
-	}
-	return b.String()
-}
-
 // Execute minimax algorithm on the board
 func ExecuteMinimax(board *Board, trie *Trie) (*Move, error) {
 	// Find all the words on the board
@@ -73,10 +43,10 @@ func ExecuteMinimax(board *Board, trie *Trie) (*Move, error) {
 	bestScore := board.Score.Blue
 	for _, word := range words {
 		updatedBoard := board.Play(word, BlueMover)
-		score := runMinimax(trie, updatedBoard, RedMover, math.MinInt, math.MaxInt, 3)
+		score := runMinimax(trie, updatedBoard, RedMover, math.MinInt, math.MaxInt, 2)
 		if score > bestScore || bestMove == nil {
-			fmt.Println("New best score:", score, "for word:", word)
-			bestMove = &Move{word}
+			fmt.Println("New best score:", score, "for word:", word.String())
+			bestMove = &Move{word: &word, board: updatedBoard}
 			bestScore = score
 		}
 	}
@@ -173,8 +143,12 @@ func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNo
 	wordFindResult := trie.Find(accumulation)
 	if wordFindResult.IsWord && len(accumulation) >= MIN_WORD_LENGTH {
 		word := Word{letters: []WordLetter{}}
-		for _, node := range accumulation {
-			word.letters = append(word.letters, WordLetter{coords: node.coords, letter: node.Letter})
+		for idx, node := range accumulation {
+			if idx == 0 {
+				word.letters = append(word.letters, WordLetter{coords: node.coords, Letter: node.Letter, IsStart: true})
+			} else {
+				word.letters = append(word.letters, WordLetter{coords: node.coords, Letter: node.Letter})
+			}
 		}
 		result = append(result, word)
 	}

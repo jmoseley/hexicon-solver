@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
+
+	"github.com/fatih/color"
 )
 
 type Color string
@@ -36,6 +39,7 @@ type Board struct {
 	Nodes       [][]*BoardNode `json:"nodes"`
 	probability float64
 	neighbors   [][][]*BoardNode
+	nodesList   []*BoardNode
 }
 
 func (b *Board) Initialize() {
@@ -226,6 +230,90 @@ func (n *BoardNode) clearSuperHexagon(board *Board) {
 		neighbor.cleared = true
 	}
 }
+
+func (b *Board) String() string {
+	return b.StringWithWord(nil)
+}
+
+func (b *Board) StringWithWord(word *Word) string {
+	if chunks == nil {
+		chunks = strings.Split(boardLayout, "X")
+	}
+
+	var builder strings.Builder
+
+	if word != nil {
+		fmt.Fprintf(&builder, "Word: %s\n", word)
+	}
+
+	builder.Grow(len(boardLayout))
+	for idx, node := range b.nodesFlat() {
+		var letter string
+		if word != nil && word.Has(node.coords) {
+			wordLetter := word.Get(node.coords)
+			if wordLetter.IsStart {
+				letter = color.HiGreenString(string(wordLetter.Letter))
+			} else {
+				letter = color.GreenString(string(wordLetter.Letter))
+			}
+		} else {
+			if node.Color == Red {
+				letter = color.RedString(string(node.Letter))
+			} else if node.Color == Blue {
+				letter = color.BlueString(string(node.Letter))
+			} else if node.Color == VeryRed {
+				letter = color.HiRedString(string(node.Letter))
+			} else if node.Color == VeryBlue {
+				letter = color.HiBlueString(string(node.Letter))
+			} else {
+				letter = string(node.Letter)
+			}
+		}
+		fmt.Fprintf(&builder, "%s%s", chunks[idx], letter)
+	}
+	fmt.Fprintf(&builder, "%s", chunks[len(chunks)-1])
+
+	return builder.String()
+}
+
+func (b *Board) nodesFlat() []*BoardNode {
+	if b.nodesList != nil {
+		return b.nodesList
+	}
+
+	nodes := []*BoardNode{}
+	for _, line := range b.Nodes {
+		for _, node := range line {
+			nodes = append(nodes, node)
+		}
+	}
+	b.nodesList = nodes
+	return nodes
+}
+
+var chunks []string
+
+const boardLayout = `
+                     ___
+                 ___/ X \___
+             ___/ X \___/ X \___
+         ___/ X \___/ X \___/ X \___
+     ___/ X \___/ X \___/ X \___/ X \___
+    / X \___/ X \___/ X \___/ X \___/ X \
+    \___/ X \___/ X \___/ X \___/ X \___/
+    / X \___/ X \___/ X \___/ X \___/ X \
+    \___/ X \___/ X \___/ X \___/ X \___/
+    / X \___/ X \___/ X \___/ X \___/ X \
+    \___/ X \___/ X \___/ X \___/ X \___/
+    / X \___/ X \___/ X \___/ X \___/ X \
+    \___/ X \___/ X \___/ X \___/ X \___/
+    / X \___/ X \___/ X \___/ X \___/ X \
+    \___/ X \___/ X \___/ X \___/ X \___/
+        \___/ X \___/ X \___/ X \___/
+            \___/ X \___/ X \___/
+                \___/ X \___/
+                    \___/
+`
 
 func (n *BoardNode) UnmarshalJSON(data []byte) error {
 	type bn BoardNode
