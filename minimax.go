@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 )
 
 const DEPTH = 3
@@ -40,16 +41,19 @@ func (m Mover) IsMatching(c Color) bool {
 func ExecuteMinimax(board *Board, trie *Trie) (*Move, error) {
 	// Find all the words on the board
 	words := findWords(board, trie, BlueMover)
+	sort.Slice(words, func(i, j int) bool {
+		return len(words[i].letters) > len(words[j].letters)
+	})
 
 	var bestMove *Move
 	alpha := math.MinInt
-	bestScore := board.Score.Blue
+	bestScore := math.MinInt
 	for _, word := range words {
 		updatedBoard := board.Play(word, BlueMover)
 		score := runMinimax(trie, updatedBoard, RedMover, alpha, math.MaxInt, DEPTH)
 		if score > bestScore || bestMove == nil {
 			fmt.Println("New best score:", score, "for word:", word.String())
-			bestMove = &Move{word: word, board: updatedBoard}
+			bestMove = &Move{word: word, board: board}
 			bestScore = score
 			alpha = max(alpha, score)
 		}
