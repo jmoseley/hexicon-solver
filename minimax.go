@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-const DEPTH = 3
+const DEPTH = 4
 
 type Mover string
 
@@ -73,6 +73,9 @@ func runMinimax(trie *Trie, board *Board, mover Mover, alpha int, beta int, dept
 	words := findWords(board, trie, mover)
 
 	if mover == BlueMover {
+		if board.Score.Blue >= 16 {
+			return math.MaxInt
+		}
 		best := math.MinInt
 		for _, word := range words {
 			updatedBoard := board.Play(word, BlueMover)
@@ -84,6 +87,9 @@ func runMinimax(trie *Trie, board *Board, mover Mover, alpha int, beta int, dept
 		}
 		return best
 	} else if mover == RedMover {
+		if board.Score.Red >= 16 {
+			return math.MinInt
+		}
 		best := math.MaxInt
 		for _, word := range words {
 			updatedBoard := board.Play(word, RedMover)
