@@ -12,13 +12,16 @@ type WordLetter struct {
 }
 
 type Word struct {
-	letters []*WordLetter
+	letters      []*WordLetter
+	Probability  float64
+	NumGreyNodes int
 }
 
 type Move struct {
 	word          *Word
 	board         *Board
 	ExpectedScore int
+	Mover         Mover
 }
 
 func (m *Move) String() string {

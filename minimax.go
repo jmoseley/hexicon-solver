@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-const DEPTH = 2
+const DEPTH = 3
 
 type Mover string
 
@@ -54,7 +54,7 @@ func ExecuteMinimax(board *Board, trie *Trie) *Move {
 	swappedBoards := board.GenerateSwaps(BlueMover)
 	for _, swappedBoard := range swappedBoards {
 		move := GetBestMoveForBoard(swappedBoard, trie)
-		if bestMove == nil || move.ExpectedScore > bestMove.ExpectedScore {
+		if move.ExpectedScore > bestMove.ExpectedScore {
 			bestMove = move
 			fmt.Println("Better move found:", move.String())
 		}
@@ -65,64 +65,80 @@ func ExecuteMinimax(board *Board, trie *Trie) *Move {
 
 func GetBestMoveForBoard(board *Board, trie *Trie) *Move {
 	var bestMove *Move
-	bestScore := math.MinInt
+	bestScore := float64(math.MinInt)
 
 	// Find all the words on the board
 	words := findWords(board, trie, BlueMover)
-	sort.Slice(words, func(i, j int) bool {
-		return len(words[i].letters) > len(words[j].letters)
-	})
-	alpha := math.MinInt
+
+	alpha := float64(math.MinInt)
 	for _, word := range words {
 		updatedBoard := board.Play(word, BlueMover)
-		score := runMinimax(trie, updatedBoard, RedMover, alpha, math.MaxInt, DEPTH)
-		if score > bestScore || bestMove == nil {
-			fmt.Println("New best score:", score, "for word:", word.String())
-			bestMove = &Move{word: word, board: board}
-			bestScore = score
-			alpha = max(alpha, score)
+		result := runMinimax(trie, updatedBoard, RedMover, alpha, math.MaxInt, DEPTH, []*Move{{word: word, board: board, ExpectedScore: -1, Mover: BlueMover}}, word.Probability)
+		if result.score > bestScore || bestMove == nil {
+			fmt.Println("New best score:", result.score, "for word:", word.String())
+			bestMove = result.moves[0]
+			bestScore = result.score
+			alpha = max(alpha, result.score)
+			// var builder strings.Builder
+			// builder.Grow(10)
+			// for _, move := range result.moves {
+			// 	builder.WriteString(move.String())
+			// 	builder.WriteString("\n")
+			// }
+			// fmt.Println(builder.String())
 		}
 	}
 
 	return bestMove
 }
 
-func runMinimax(trie *Trie, board *Board, mover Mover, alpha int, beta int, depth int) int {
+type MinimaxResult struct {
+	score       float64
+	moves       []*Move
+	probability float64
+}
+
+func runMinimax(trie *Trie, board *Board, mover Mover, alpha float64, beta float64, depth int, moves []*Move, probability float64) *MinimaxResult {
+	if probability <= 0.05 {
+		return &MinimaxResult{score: math.MinInt, moves: moves, probability: probability}
+	}
 	if depth == 0 {
-		if mover == RedMover {
-			return board.Score.Red - board.Score.Blue
-		}
-		return board.Score.Blue - board.Score.Red
+		return &MinimaxResult{score: float64(board.Score.Blue-board.Score.Red) * probability, moves: moves, probability: probability}
+	}
+	if board.Score.Red >= 16 {
+		return &MinimaxResult{score: math.MinInt * probability, moves: moves, probability: probability}
+	} else if board.Score.Blue >= 16 {
+		return &MinimaxResult{score: math.MaxInt * probability, moves: moves, probability: probability}
 	}
 
 	words := findWords(board, trie, mover)
 
 	if mover == BlueMover {
-		if board.Score.Blue >= 16 {
-			return math.MaxInt
-		}
-		best := math.MinInt
+		best := &MinimaxResult{score: math.MinInt, moves: moves, probability: probability}
 		for _, word := range words {
 			updatedBoard := board.Play(word, BlueMover)
-			best = max(best, runMinimax(trie, updatedBoard, mover.Opposite(), alpha, beta, depth-1))
-			if best >= beta {
+			result := runMinimax(trie, updatedBoard, mover.Opposite(), alpha, beta, depth-1, append(moves, &Move{word: word, board: board, Mover: mover}), probability*word.Probability)
+			if result.score > best.score {
+				best = result
+			}
+			if best.score >= beta {
 				break
 			}
-			alpha = max(alpha, best)
+			alpha = max(alpha, best.score)
 		}
 		return best
 	} else if mover == RedMover {
-		if board.Score.Red >= 16 {
-			return math.MinInt
-		}
-		best := math.MaxInt
+		best := &MinimaxResult{score: math.MaxInt, moves: moves, probability: probability}
 		for _, word := range words {
 			updatedBoard := board.Play(word, RedMover)
-			best = min(best, runMinimax(trie, updatedBoard, mover.Opposite(), alpha, beta, depth-1))
-			if best <= alpha {
+			result := runMinimax(trie, updatedBoard, mover.Opposite(), alpha, beta, depth-1, append(moves, &Move{word: word, board: board, Mover: mover}), probability*word.Probability)
+			if result.score < best.score {
+				best = result
+			}
+			if best.score <= alpha {
 				break
 			}
-			beta = min(beta, best)
+			beta = min(beta, best.score)
 		}
 		return best
 	} else {
@@ -130,14 +146,14 @@ func runMinimax(trie *Trie, board *Board, mover Mover, alpha int, beta int, dept
 	}
 }
 
-func max(a int, b int) int {
+func max(a float64, b float64) float64 {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func min(a int, b int) int {
+func min(a float64, b float64) float64 {
 	if a < b {
 		return a
 	}
@@ -155,15 +171,42 @@ func findWords(board *Board, trie *Trie, mover Mover) []*Word {
 				continue
 			}
 
-			result = append(result, getWordsStartingAtNode(trie, board, mover, node, accumulation)...)
+			result = append(result, getWordsStartingAtNode(trie, board, mover, node, accumulation, 1.0)...)
 		}
 	}
+
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].NumGreyNodes > result[j].NumGreyNodes {
+			return true
+		} else if result[i].NumGreyNodes < result[j].NumGreyNodes {
+			return false
+		} else {
+			return len(result[i].letters) > len(result[j].letters)
+		}
+	})
 
 	return result
 }
 
-func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNode, accumulation []*BoardNode) []*Word {
+var lettersArray = []byte{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'}
+
+func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNode, accumulation []*BoardNode, probability float64) []*Word {
 	result := []*Word{}
+	if probability < 0.1 {
+		return result
+	}
+
+	if node.cleared {
+		originalLetter := node.Letter
+		for _, letter := range lettersArray {
+			node.Letter = letter
+			node.cleared = false
+			result = append(result, getWordsStartingAtNode(trie, board, mover, node, accumulation, probability/26)...)
+		}
+		node.Letter = originalLetter
+		node.cleared = true
+		return result
+	}
 
 	if node.used {
 		return result
@@ -181,14 +224,19 @@ func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNo
 
 	wordFindResult := trie.Find(accumulation)
 	if wordFindResult.IsWord && len(accumulation) >= MIN_WORD_LENGTH {
-		word := Word{letters: []*WordLetter{}}
+		word := Word{letters: []*WordLetter{}, Probability: probability}
+		numGreyNodes := 0
 		for idx, node := range accumulation {
+			if node.Color == None {
+				numGreyNodes++
+			}
 			if idx == 0 {
 				word.letters = append(word.letters, &WordLetter{coords: node.coords, Letter: node.Letter, IsStart: true})
 			} else {
 				word.letters = append(word.letters, &WordLetter{coords: node.coords, Letter: node.Letter})
 			}
 		}
+		word.NumGreyNodes = numGreyNodes
 		result = append(result, &word)
 	}
 	if !wordFindResult.IsPrefix {
@@ -197,7 +245,7 @@ func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNo
 
 	neighbors := board.GetNeighbors(node.coords)
 	for _, neighbor := range neighbors {
-		result = append(result, getWordsStartingAtNode(trie, board, mover, neighbor, accumulation)...)
+		result = append(result, getWordsStartingAtNode(trie, board, mover, neighbor, accumulation, probability)...)
 	}
 
 	return result
