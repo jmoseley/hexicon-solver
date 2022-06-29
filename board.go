@@ -272,11 +272,17 @@ func (b *Board) StringWithWord(word *Word) string {
 		chunks = strings.Split(boardLayout, "X")
 	}
 
+	red := color.New(color.FgRed)
+	blue := color.New(color.FgBlue)
+
 	var builder strings.Builder
 
+	fmt.Fprintf(&builder, "Score: %s / %s\n", blue.Sprintf("%d", b.Score.Blue), red.Sprintf("%d", b.Score.Red))
+
 	if word != nil {
-		fmt.Fprintf(&builder, "Word: %s\n", word)
+		fmt.Fprintf(&builder, "Word: %s", word)
 	}
+	fmt.Fprintf(&builder, "\n")
 
 	builder.Grow(len(boardLayout))
 	for idx, node := range b.nodesFlat() {
@@ -287,13 +293,13 @@ func (b *Board) StringWithWord(word *Word) string {
 			letter = string(node.Letter)
 			if wordLetter.IsStart {
 				if node.IsSwapped {
-					printColor = color.New(color.FgHiWhite, color.BgGreen)
+					printColor = color.New(color.FgBlack, color.BgHiGreen)
 				} else {
 					printColor = color.New(color.FgHiGreen)
 				}
 			} else {
 				if node.IsSwapped {
-					printColor = color.New(color.FgWhite, color.BgGreen)
+					printColor = color.New(color.FgBlack, color.BgGreen)
 				} else {
 					printColor = color.New(color.FgGreen)
 				}
@@ -305,9 +311,9 @@ func (b *Board) StringWithWord(word *Word) string {
 			} else if node.Color == Blue {
 				printColor = color.New(color.FgBlue)
 			} else if node.Color == VeryRed {
-				printColor = color.New(color.FgRed)
+				printColor = color.New(color.FgHiRed)
 			} else if node.Color == VeryBlue {
-				printColor = color.New(color.FgBlue)
+				printColor = color.New(color.FgHiBlue)
 			}
 			if node.IsSwapped {
 				printColor = printColor.Add(color.BgWhite)
