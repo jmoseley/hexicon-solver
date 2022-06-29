@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-const DEPTH = 4
+const DEPTH = 2
 
 type Mover string
 
@@ -36,18 +36,43 @@ func (m Mover) IsMatching(c Color) bool {
 	}
 	return c == Blue || c == VeryBlue
 }
+func (m Mover) IsMatchingDrab(c Color) bool {
+	if c == None {
+		return true
+	}
+	if m == RedMover {
+		return c == Red
+	}
+	return c == Blue
+}
 
 // Execute minimax algorithm on the board
-func ExecuteMinimax(board *Board, trie *Trie) (*Move, error) {
+func ExecuteMinimax(board *Board, trie *Trie) *Move {
+	bestMove := GetBestMoveForBoard(board, trie)
+
+	// Get swapped boards
+	swappedBoards := board.GenerateSwaps(BlueMover)
+	for _, swappedBoard := range swappedBoards {
+		move := GetBestMoveForBoard(swappedBoard, trie)
+		if bestMove == nil || move.ExpectedScore > bestMove.ExpectedScore {
+			bestMove = move
+			fmt.Println("Better move found:", move.String())
+		}
+	}
+
+	return bestMove
+}
+
+func GetBestMoveForBoard(board *Board, trie *Trie) *Move {
+	var bestMove *Move
+	bestScore := math.MinInt
+
 	// Find all the words on the board
 	words := findWords(board, trie, BlueMover)
 	sort.Slice(words, func(i, j int) bool {
 		return len(words[i].letters) > len(words[j].letters)
 	})
-
-	var bestMove *Move
 	alpha := math.MinInt
-	bestScore := math.MinInt
 	for _, word := range words {
 		updatedBoard := board.Play(word, BlueMover)
 		score := runMinimax(trie, updatedBoard, RedMover, alpha, math.MaxInt, DEPTH)
@@ -59,7 +84,7 @@ func ExecuteMinimax(board *Board, trie *Trie) (*Move, error) {
 		}
 	}
 
-	return bestMove, nil
+	return bestMove
 }
 
 func runMinimax(trie *Trie, board *Board, mover Mover, alpha int, beta int, depth int) int {

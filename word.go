@@ -16,8 +16,9 @@ type Word struct {
 }
 
 type Move struct {
-	word  *Word
-	board *Board
+	word          *Word
+	board         *Board
+	ExpectedScore int
 }
 
 func (m *Move) String() string {

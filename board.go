@@ -26,12 +26,13 @@ type BoardScore struct {
 }
 
 type BoardNode struct {
-	Letter  byte
-	Char    string `json:"char"`
-	Color   Color  `json:"color"`
-	cleared bool
-	used    bool
-	coords  []int
+	Letter    byte
+	Char      string `json:"char"`
+	Color     Color  `json:"color"`
+	cleared   bool
+	used      bool
+	coords    []int
+	IsSwapped bool
 }
 
 type Board struct {
@@ -62,7 +63,8 @@ func (b *Board) Play(word *Word, mover Mover) *Board {
 		if node.Color == None {
 			node.Color = mover.GetColor()
 		} else if !mover.IsMatching(node.Color) {
-			log.Fatal("Invalid move:", word, "as", mover, "at", letter.coords)
+			fmt.Println(board.String())
+			log.Fatalln("Invalid move: As", mover, "letter:", letter.coords, string(letter.Letter), "Node:", node.Color, node.coords, "swapped", node.IsSwapped, "letter", string(node.Letter), "\n", board.StringWithWord(word))
 		}
 	}
 
@@ -101,10 +103,6 @@ func (b *Board) Play(word *Word, mover Mover) *Board {
 	for _, node := range superHexagons {
 		node.clearSuperHexagon(board)
 	}
-
-	// if (board.Score.Red != b.Score.Red) || (board.Score.Blue != b.Score.Blue) {
-	// 	log.Println("Score: Red", board.Score.Red, "Blue", board.Score.Blue)
-	// }
 
 	return board
 }
@@ -181,7 +179,7 @@ func (b *Board) clone() *Board {
 				Color:   b.Nodes[lineNum][nodeNum].Color,
 				cleared: b.Nodes[lineNum][nodeNum].cleared,
 				used:    b.Nodes[lineNum][nodeNum].used,
-				coords:  b.Nodes[lineNum][nodeNum].coords,
+				coords:  []int{lineNum, nodeNum},
 			}
 		}
 	}
@@ -231,6 +229,39 @@ func (n *BoardNode) clearSuperHexagon(board *Board) {
 	}
 }
 
+func (b *Board) GenerateSwaps(mover Mover) []*Board {
+	swaps := []*Board{}
+	for lineNum := 0; lineNum < len(b.Nodes); lineNum++ {
+		for nodeNum := 0; nodeNum < len(b.Nodes[lineNum]); nodeNum++ {
+			node := b.Nodes[lineNum][nodeNum]
+			if !mover.IsMatching(node.Color) {
+				continue
+			}
+			for _, neighbor := range b.GetNeighbors(node.coords) {
+				if mover.IsMatchingDrab(neighbor.Color) {
+					fmt.Println("Swap", node.coords, "with", neighbor.coords, "node color", node.Color, "neighbor color", neighbor.Color)
+					swaps = append(swaps, b.clone())
+					swaps[len(swaps)-1].SwapNodes(node.coords, neighbor.coords)
+					fmt.Println("swap\n", swaps[len(swaps)-1].String())
+				}
+			}
+		}
+	}
+	return swaps
+}
+
+func (b *Board) SwapNodes(node1Coords, node2Coords []int) {
+	node1 := b.Nodes[node1Coords[0]][node1Coords[1]]
+	node2 := b.Nodes[node2Coords[0]][node2Coords[1]]
+	b.Nodes[node1Coords[0]][node1Coords[1]] = node2
+	b.Nodes[node2Coords[0]][node2Coords[1]] = node1
+	node1.IsSwapped = true
+	node2.IsSwapped = true
+
+	node1.coords = node2Coords
+	node2.coords = node1Coords
+}
+
 func (b *Board) String() string {
 	return b.StringWithWord(nil)
 }
@@ -249,27 +280,39 @@ func (b *Board) StringWithWord(word *Word) string {
 	builder.Grow(len(boardLayout))
 	for idx, node := range b.nodesFlat() {
 		var letter string
+		printColor := color.New(color.FgWhite)
 		if word != nil && word.Has(node.coords) {
 			wordLetter := word.Get(node.coords)
+			letter = string(node.Letter)
 			if wordLetter.IsStart {
-				letter = color.HiGreenString(string(wordLetter.Letter))
+				if node.IsSwapped {
+					printColor = color.New(color.FgHiWhite, color.BgGreen)
+				} else {
+					printColor = color.New(color.FgHiGreen)
+				}
 			} else {
-				letter = color.GreenString(string(wordLetter.Letter))
+				if node.IsSwapped {
+					printColor = color.New(color.FgWhite, color.BgGreen)
+				} else {
+					printColor = color.New(color.FgGreen)
+				}
 			}
 		} else {
+			letter = string(node.Letter)
 			if node.Color == Red {
-				letter = color.RedString(string(node.Letter))
+				printColor = color.New(color.FgRed)
 			} else if node.Color == Blue {
-				letter = color.BlueString(string(node.Letter))
+				printColor = color.New(color.FgBlue)
 			} else if node.Color == VeryRed {
-				letter = color.HiRedString(string(node.Letter))
+				printColor = color.New(color.FgRed)
 			} else if node.Color == VeryBlue {
-				letter = color.HiBlueString(string(node.Letter))
-			} else {
-				letter = string(node.Letter)
+				printColor = color.New(color.FgBlue)
+			}
+			if node.IsSwapped {
+				printColor = printColor.Add(color.BgWhite)
 			}
 		}
-		fmt.Fprintf(&builder, "%s%s", chunks[idx], letter)
+		fmt.Fprintf(&builder, "%s%s", chunks[idx], printColor.Sprintf(letter))
 	}
 	fmt.Fprintf(&builder, "%s", chunks[len(chunks)-1])
 

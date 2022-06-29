@@ -51,10 +51,7 @@ func main() {
 	// Instantiate the trie
 	trie := CreateTrie(words)
 
-	result, err := ExecuteMinimax(&board, trie)
-	if err != nil {
-		log.Fatal(err)
-	}
+	result := ExecuteMinimax(&board, trie)
 
 	// Print the result
 	fmt.Println(result.String())
