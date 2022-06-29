@@ -232,6 +232,7 @@ func (n *BoardNode) clearSuperHexagon(board *Board) {
 
 func (b *Board) GenerateSwaps(mover Mover) []*Board {
 	swaps := []*Board{}
+	hasSwapped := map[string]bool{}
 	for lineNum := 0; lineNum < len(b.Nodes); lineNum++ {
 		for nodeNum := 0; nodeNum < len(b.Nodes[lineNum]); nodeNum++ {
 			node := b.Nodes[lineNum][nodeNum]
@@ -239,11 +240,10 @@ func (b *Board) GenerateSwaps(mover Mover) []*Board {
 				continue
 			}
 			for _, neighbor := range b.GetNeighbors(node.coords) {
-				if mover.IsMatchingDrab(neighbor.Color) {
-					fmt.Println("Swap", node.coords, "with", neighbor.coords, "node color", node.Color, "neighbor color", neighbor.Color)
+				if mover.IsMatchingDrab(neighbor.Color) && hasSwapped[fmt.Sprint(node.coords, neighbor.coords)] == false && hasSwapped[fmt.Sprint(neighbor.coords, node.coords)] == false {
 					swaps = append(swaps, b.clone())
 					swaps[len(swaps)-1].SwapNodes(node.coords, neighbor.coords)
-					fmt.Println("swap\n", swaps[len(swaps)-1].String())
+					hasSwapped[fmt.Sprint(node.coords, neighbor.coords)] = true
 				}
 			}
 		}
