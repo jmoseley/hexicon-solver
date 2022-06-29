@@ -94,7 +94,6 @@ func (b *Board) Play(word *Word, mover Mover) *Board {
 		for nodeNum := 0; nodeNum < len(board.Nodes[lineNum]); nodeNum++ {
 			node := board.Nodes[lineNum][nodeNum]
 			if node.isSuperHexagon(board) {
-				fmt.Println("Node", node.coords, "is", node.Color)
 				superHexagons = append(superHexagons, node)
 			}
 		}
@@ -196,8 +195,10 @@ func (n *BoardNode) clearHexagon(board *Board, mover Mover) {
 
 	neighbors := board.GetNeighbors(n.coords)
 	for _, neighbor := range neighbors {
-		neighbor.Color = None
-		neighbor.cleared = true
+		if neighbor.Color == Red || neighbor.Color == Blue {
+			neighbor.Color = None
+			neighbor.cleared = true
+		}
 	}
 }
 
