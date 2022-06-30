@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-const DEPTH = 2
+const DEPTH = 3
 
 type Mover string
 
@@ -47,17 +47,26 @@ func (m Mover) IsMatchingDrab(c Color) bool {
 
 // Execute minimax algorithm on the board
 func ExecuteMinimax(board *Board, trie *Trie) *Move {
-	bestResult := GetBestResultForBoard(board, trie)
+	resultsChannel := make(chan *MinimaxResult)
+	boardsPlayed := 0
+
+	go GetBestResultForBoard(resultsChannel, board, trie)
+	boardsPlayed++
 
 	// Get swapped boards
 	swappedBoards := board.GenerateSwaps(BlueMover)
 	for _, swappedBoard := range swappedBoards {
-		result := GetBestResultForBoard(swappedBoard, trie)
-		if result.score > bestResult.score {
+		go GetBestResultForBoard(resultsChannel, swappedBoard, trie)
+		boardsPlayed++
+	}
+
+	var bestResult *MinimaxResult
+	for boardsPlayed > 0 {
+		result := <-resultsChannel
+		boardsPlayed--
+		if bestResult == nil || result.score > bestResult.score {
 			bestResult = result
-			fmt.Println("Better move found:", result.moves[0].String())
 		}
-		break
 	}
 
 	fmt.Println("Best result:", bestResult.String())
@@ -65,7 +74,7 @@ func ExecuteMinimax(board *Board, trie *Trie) *Move {
 	return bestResult.moves[0]
 }
 
-func GetBestResultForBoard(board *Board, trie *Trie) *MinimaxResult {
+func GetBestResultForBoard(resultsChannel chan *MinimaxResult, board *Board, trie *Trie) {
 	var bestResult *MinimaxResult
 
 	// Find all the words on the board
@@ -82,7 +91,7 @@ func GetBestResultForBoard(board *Board, trie *Trie) *MinimaxResult {
 		}
 	}
 
-	return bestResult
+	resultsChannel <- bestResult
 }
 
 type MinimaxResult struct {
