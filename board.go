@@ -127,6 +127,64 @@ func (b *Board) GetNeighbors(nodeCoord []int) []*BoardNode {
 	}
 }
 
+func (b *Board) GetTerminalResult() float64 {
+	if b.Score.Blue >= 16 {
+		return 1
+	} else if b.Score.Red >= 16 {
+		return 0
+	} else {
+		return -1
+	}
+}
+
+const NUM_SQUARES = 61
+
+// between 0 and 1
+func (b *Board) heuristic(mover Mover) float64 {
+	var closenessToWinning float64
+	var closenessToLosing float64
+	if mover == Red {
+		closenessToWinning = float64(b.Score.Red) / 16.0
+		closenessToLosing = 1 - (float64(b.Score.Blue) / 16.0)
+	} else {
+		closenessToWinning = float64(b.Score.Blue) / 16.0
+		closenessToLosing = 1 - (float64(b.Score.Red) / 16.0)
+	}
+	numBlueSquares := 0
+	numRedSquares := 0
+	for lineNum := 0; lineNum < len(b.Nodes); lineNum++ {
+		for nodeNum := 0; nodeNum < len(b.Nodes[lineNum]); nodeNum++ {
+			node := b.Nodes[lineNum][nodeNum]
+			if node.Color == Red || node.Color == VeryRed {
+				numRedSquares++
+			} else if node.Color == Blue || node.Color == VeryBlue {
+				numBlueSquares++
+			}
+		}
+	}
+
+	blueSquareRatio := float64(numBlueSquares) / float64(NUM_SQUARES)
+	redSquareRatio := float64(numRedSquares) / float64(NUM_SQUARES)
+
+	var goodSquareRatio float64
+	var badSquareRatio float64
+	if mover == Red {
+		goodSquareRatio = redSquareRatio
+		badSquareRatio = blueSquareRatio
+	} else {
+		goodSquareRatio = blueSquareRatio
+		badSquareRatio = redSquareRatio
+	}
+
+	result := closenessToWinning*.9 + (1-closenessToLosing)*.02 + goodSquareRatio*.07 + (1-badSquareRatio)*.01
+
+	// fmt.Println(b.String())
+	// fmt.Println("Blue", blueSquareRatio, "Red", redSquareRatio)
+	// fmt.Println("Result", result, "Closeness to winning:", closenessToWinning, "Closeness to losing:", closenessToLosing, "Blue squares:", numBlueSquares, "Red squares:", numRedSquares)
+
+	return result
+}
+
 func (n *BoardNode) checkHexagon(board *Board) Mover {
 	if n.Color == None || n.Color == VeryRed || n.Color == VeryBlue {
 		return ""
@@ -316,7 +374,11 @@ func (b *Board) StringWithWord(word *Word) string {
 				printColor = color.New(color.FgHiBlue)
 			}
 			if node.IsSwapped {
-				printColor = printColor.Add(color.BgWhite)
+				if node.Color == None {
+					printColor = color.New(color.FgBlack, color.BgWhite)
+				} else {
+					printColor = printColor.Add(color.BgWhite)
+				}
 			}
 		}
 		fmt.Fprintf(&builder, "%s%s", chunks[idx], printColor.Sprintf(letter))

@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"sort"
+	"strings"
 )
 
 const DEPTH = 3
@@ -48,77 +48,74 @@ func (m Mover) IsMatchingDrab(c Color) bool {
 
 // Execute minimax algorithm on the board
 func ExecuteMinimax(board *Board, trie *Trie) *Move {
-	bestMove := GetBestMoveForBoard(board, trie)
+	bestResult := GetBestResultForBoard(board, trie)
 
 	// Get swapped boards
 	swappedBoards := board.GenerateSwaps(BlueMover)
 	for _, swappedBoard := range swappedBoards {
-		move := GetBestMoveForBoard(swappedBoard, trie)
-		if move.ExpectedScore > bestMove.ExpectedScore {
-			bestMove = move
-			fmt.Println("Better move found:", move.String())
+		result := GetBestResultForBoard(swappedBoard, trie)
+		if result.score > bestResult.score {
+			bestResult = result
+			fmt.Println("Better move found:", result.moves[0].String())
 		}
+		break
 	}
 
-	return bestMove
+	fmt.Println("Best result:", bestResult.String())
+
+	return bestResult.moves[0]
 }
 
-func GetBestMoveForBoard(board *Board, trie *Trie) *Move {
-	var bestMove *Move
-	bestScore := float64(math.MinInt)
+func GetBestResultForBoard(board *Board, trie *Trie) *MinimaxResult {
+	var bestResult *MinimaxResult
 
 	// Find all the words on the board
 	words := findWords(board, trie, BlueMover)
 
-	alpha := float64(math.MinInt)
+	alpha := 0.0
 	for _, word := range words {
 		updatedBoard := board.Play(word, BlueMover)
-		result := runMinimax(trie, updatedBoard, RedMover, alpha, math.MaxInt, DEPTH, []*Move{{word: word, board: board, ExpectedScore: -1, Mover: BlueMover}}, word.Probability)
-		if result.score > bestScore || bestMove == nil {
+		result := runMinimax(trie, updatedBoard, RedMover, alpha, 1, DEPTH, []*Move{{word: word, board: board, Mover: BlueMover}}, word.Probability)
+		if bestResult == nil || result.score > bestResult.score {
 			fmt.Println("New best score:", result.score, "for word:", word.String())
-			bestMove = result.moves[0]
-			bestScore = result.score
+			bestResult = result
 			alpha = max(alpha, result.score)
-			// var builder strings.Builder
-			// builder.Grow(10)
-			// for _, move := range result.moves {
-			// 	builder.WriteString(move.String())
-			// 	builder.WriteString("\n")
-			// }
-			// fmt.Println(builder.String())
 		}
 	}
 
-	return bestMove
+	return bestResult
 }
 
 type MinimaxResult struct {
+	// should be between 0 and 1
 	score       float64
 	moves       []*Move
 	probability float64
 }
 
 func runMinimax(trie *Trie, board *Board, mover Mover, alpha float64, beta float64, depth int, moves []*Move, probability float64) *MinimaxResult {
-	if probability <= 0.05 {
-		return &MinimaxResult{score: math.MinInt, moves: moves, probability: probability}
+	if probability <= 0.01 {
+		return &MinimaxResult{score: -1, moves: moves, probability: probability}
+	}
+	terminalResult := board.GetTerminalResult()
+	if terminalResult != -1 {
+		return &MinimaxResult{score: float64(terminalResult) * probability, moves: moves, probability: probability}
 	}
 	if depth == 0 {
-		return &MinimaxResult{score: float64(board.Score.Blue-board.Score.Red) * probability, moves: moves, probability: probability}
-	}
-	if board.Score.Red >= 16 {
-		return &MinimaxResult{score: math.MinInt * probability, moves: moves, probability: probability}
-	} else if board.Score.Blue >= 16 {
-		return &MinimaxResult{score: math.MaxInt * probability, moves: moves, probability: probability}
+		return &MinimaxResult{score: board.heuristic(mover) * probability, moves: moves, probability: probability}
 	}
 
 	words := findWords(board, trie, mover)
+	if len(words) == 0 {
+		return &MinimaxResult{score: -1, moves: moves, probability: probability}
+	}
 
 	if mover == BlueMover {
-		best := &MinimaxResult{score: math.MinInt, moves: moves, probability: probability}
+		var best *MinimaxResult
 		for _, word := range words {
 			updatedBoard := board.Play(word, BlueMover)
-			result := runMinimax(trie, updatedBoard, mover.Opposite(), alpha, beta, depth-1, append(moves, &Move{word: word, board: board, Mover: mover}), probability*word.Probability)
-			if result.score > best.score {
+			result := runMinimax(trie, updatedBoard, RedMover, alpha, beta, depth-1, append(moves, &Move{word: word, board: board, Mover: mover}), probability*word.Probability)
+			if best == nil || result.score > best.score {
 				best = result
 			}
 			if best.score >= beta {
@@ -128,11 +125,11 @@ func runMinimax(trie *Trie, board *Board, mover Mover, alpha float64, beta float
 		}
 		return best
 	} else if mover == RedMover {
-		best := &MinimaxResult{score: math.MaxInt, moves: moves, probability: probability}
+		var best *MinimaxResult
 		for _, word := range words {
 			updatedBoard := board.Play(word, RedMover)
-			result := runMinimax(trie, updatedBoard, mover.Opposite(), alpha, beta, depth-1, append(moves, &Move{word: word, board: board, Mover: mover}), probability*word.Probability)
-			if result.score < best.score {
+			result := runMinimax(trie, updatedBoard, BlueMover, alpha, beta, depth-1, append(moves, &Move{word: word, board: board, Mover: mover}), probability*word.Probability)
+			if best == nil || (result.score < best.score && result.score != -1) {
 				best = result
 			}
 			if best.score <= alpha {
@@ -144,6 +141,17 @@ func runMinimax(trie *Trie, board *Board, mover Mover, alpha float64, beta float
 	} else {
 		panic("Invalid mover")
 	}
+}
+
+func (r *MinimaxResult) String() string {
+	var builder strings.Builder
+	builder.Grow(10)
+	for _, move := range r.moves {
+		builder.WriteString(move.String())
+		builder.WriteString("\n")
+	}
+	builder.WriteString(fmt.Sprintf("Score: %f", r.score))
+	return builder.String()
 }
 
 func max(a float64, b float64) float64 {

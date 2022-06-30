@@ -18,10 +18,9 @@ type Word struct {
 }
 
 type Move struct {
-	word          *Word
-	board         *Board
-	ExpectedScore int
-	Mover         Mover
+	word  *Word
+	board *Board
+	Mover Mover
 }
 
 func (m *Move) String() string {
@@ -32,7 +31,7 @@ func (m *Move) String() string {
 	}
 }
 
-const MIN_WORD_LENGTH = 5
+const MIN_WORD_LENGTH = 4
 
 func (w *Word) String() string {
 	// Join all the letters of the word
