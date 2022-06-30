@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
-const DEPTH = 3
+const DEPTH = 2
 
 type Mover string
 
@@ -70,7 +69,7 @@ func GetBestResultForBoard(board *Board, trie *Trie) *MinimaxResult {
 	var bestResult *MinimaxResult
 
 	// Find all the words on the board
-	words := findWords(board, trie, BlueMover)
+	words := FindWords(board, trie, BlueMover)
 
 	alpha := 0.0
 	for _, word := range words {
@@ -105,7 +104,7 @@ func runMinimax(trie *Trie, board *Board, mover Mover, alpha float64, beta float
 		return &MinimaxResult{score: board.heuristic(mover) * probability, moves: moves, probability: probability}
 	}
 
-	words := findWords(board, trie, mover)
+	words := FindWords(board, trie, mover)
 	if len(words) == 0 {
 		return &MinimaxResult{score: -1, moves: moves, probability: probability}
 	}
@@ -166,95 +165,4 @@ func min(a float64, b float64) float64 {
 		return a
 	}
 	return b
-}
-
-func findWords(board *Board, trie *Trie, mover Mover) []*Word {
-	result := []*Word{}
-	accumulation := []*BoardNode{}
-	for lineNum := 0; lineNum < len(board.Nodes); lineNum++ {
-		for nodeNum := 0; nodeNum < len(board.Nodes[lineNum]); nodeNum++ {
-			node := board.Nodes[lineNum][nodeNum]
-			// Find all the words on the board
-			if !mover.IsMatching(node.Color) {
-				continue
-			}
-
-			result = append(result, getWordsStartingAtNode(trie, board, mover, node, accumulation, 1.0)...)
-		}
-	}
-
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].NumGreyNodes > result[j].NumGreyNodes {
-			return true
-		} else if result[i].NumGreyNodes < result[j].NumGreyNodes {
-			return false
-		} else {
-			return len(result[i].letters) > len(result[j].letters)
-		}
-	})
-
-	return result
-}
-
-var lettersArray = []byte{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'}
-
-func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNode, accumulation []*BoardNode, probability float64) []*Word {
-	result := []*Word{}
-	if probability < 0.1 {
-		return result
-	}
-
-	if node.cleared {
-		originalLetter := node.Letter
-		for _, letter := range lettersArray {
-			node.Letter = letter
-			node.cleared = false
-			result = append(result, getWordsStartingAtNode(trie, board, mover, node, accumulation, probability/26)...)
-		}
-		node.Letter = originalLetter
-		node.cleared = true
-		return result
-	}
-
-	if node.used {
-		return result
-	}
-	if !mover.IsMatching(node.Color) {
-		return result
-	}
-
-	accumulation = append(accumulation, node)
-	node.used = true
-	defer func() {
-		node.used = false
-		accumulation = accumulation[:len(accumulation)-1]
-	}()
-
-	wordFindResult := trie.Find(accumulation)
-	if wordFindResult.IsWord && len(accumulation) >= MIN_WORD_LENGTH {
-		word := Word{letters: []*WordLetter{}, Probability: probability}
-		numGreyNodes := 0
-		for idx, node := range accumulation {
-			if node.Color == None {
-				numGreyNodes++
-			}
-			if idx == 0 {
-				word.letters = append(word.letters, &WordLetter{coords: node.coords, Letter: node.Letter, IsStart: true})
-			} else {
-				word.letters = append(word.letters, &WordLetter{coords: node.coords, Letter: node.Letter})
-			}
-		}
-		word.NumGreyNodes = numGreyNodes
-		result = append(result, &word)
-	}
-	if !wordFindResult.IsPrefix {
-		return result
-	}
-
-	neighbors := board.GetNeighbors(node.coords)
-	for _, neighbor := range neighbors {
-		result = append(result, getWordsStartingAtNode(trie, board, mover, neighbor, accumulation, probability)...)
-	}
-
-	return result
 }

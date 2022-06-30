@@ -89,18 +89,20 @@ func (b *Board) Play(word *Word, mover Mover) *Board {
 		node.clearHexagon(board, mover)
 	}
 
-	superHexagons := []*BoardNode{}
-	for lineNum := 0; lineNum < len(board.Nodes); lineNum++ {
-		for nodeNum := 0; nodeNum < len(board.Nodes[lineNum]); nodeNum++ {
-			node := board.Nodes[lineNum][nodeNum]
-			if node.isSuperHexagon(board) {
-				superHexagons = append(superHexagons, node)
+	if len(hexagonCenters) > 0 {
+		superHexagons := []*BoardNode{}
+		for lineNum := 0; lineNum < len(board.Nodes); lineNum++ {
+			for nodeNum := 0; nodeNum < len(board.Nodes[lineNum]); nodeNum++ {
+				node := board.Nodes[lineNum][nodeNum]
+				if node.isSuperHexagon(board) {
+					superHexagons = append(superHexagons, node)
+				}
 			}
 		}
-	}
 
-	for _, node := range superHexagons {
-		node.clearSuperHexagon(board)
+		for _, node := range superHexagons {
+			node.clearSuperHexagon(board)
+		}
 	}
 
 	return board
