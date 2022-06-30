@@ -145,13 +145,8 @@ const NUM_SQUARES = 61
 func (b *Board) heuristic(mover Mover) float64 {
 	var closenessToWinning float64
 	var closenessToLosing float64
-	if mover == Red {
-		closenessToWinning = float64(b.Score.Red) / 16.0
-		closenessToLosing = 1 - (float64(b.Score.Blue) / 16.0)
-	} else {
-		closenessToWinning = float64(b.Score.Blue) / 16.0
-		closenessToLosing = 1 - (float64(b.Score.Red) / 16.0)
-	}
+	closenessToWinning = float64(b.Score.Blue) / 16.0
+	closenessToLosing = 1 - (float64(b.Score.Red) / 16.0)
 	numBlueSquares := 0
 	numRedSquares := 0
 	for lineNum := 0; lineNum < len(b.Nodes); lineNum++ {
@@ -170,15 +165,10 @@ func (b *Board) heuristic(mover Mover) float64 {
 
 	var goodSquareRatio float64
 	var badSquareRatio float64
-	if mover == Red {
-		goodSquareRatio = redSquareRatio
-		badSquareRatio = blueSquareRatio
-	} else {
-		goodSquareRatio = blueSquareRatio
-		badSquareRatio = redSquareRatio
-	}
+	goodSquareRatio = blueSquareRatio
+	badSquareRatio = 1 - redSquareRatio
 
-	result := closenessToWinning*.9 + (1-closenessToLosing)*.02 + goodSquareRatio*.07 + (1-badSquareRatio)*.01
+	result := closenessToWinning*.9 + closenessToLosing*.02 + goodSquareRatio*.05 + badSquareRatio*.03
 
 	// fmt.Println(b.String())
 	// fmt.Println("Blue", blueSquareRatio, "Red", redSquareRatio)
