@@ -32,7 +32,7 @@ func (m *Move) String() string {
 	}
 }
 
-const MIN_WORD_LENGTH = 5
+const MIN_WORD_LENGTH = 0
 
 func (w *Word) String() string {
 	// Join all the letters of the word
