@@ -313,6 +313,24 @@ func (b *Board) SwapNodes(node1Coords, node2Coords []int) {
 	node2.coords = node1Coords
 }
 
+func (b *Board) FindSwaps(node *BoardNode, ignore *BoardNode, desiredLetter byte) []*BoardNode {
+	result := []*BoardNode{}
+	if node.used || node.Color == VeryBlue || node.Color == VeryRed {
+		return result
+	}
+
+	for _, neighbor := range b.GetNeighbors(node.coords) {
+		if neighbor.used || neighbor.Color == VeryBlue || neighbor.Color == VeryRed || neighbor.coords[0] == ignore.coords[0] && neighbor.coords[1] == ignore.coords[1] {
+			continue
+		}
+		if neighbor.Letter == desiredLetter {
+			result = append(result, neighbor)
+		}
+	}
+
+	return result
+}
+
 func (b *Board) String() string {
 	return b.StringWithWord(nil)
 }

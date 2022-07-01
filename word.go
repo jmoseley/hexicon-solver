@@ -16,19 +16,19 @@ type Word struct {
 	letters      []*WordLetter
 	Probability  float64
 	NumGreyNodes int
+	board        *Board
 }
 
 type Move struct {
 	word  *Word
-	board *Board
 	Mover Mover
 }
 
 func (m *Move) String() string {
-	if m.board == nil {
+	if m.word.board == nil {
 		return m.word.String()
 	} else {
-		return m.board.StringWithWord(m.word)
+		return m.word.board.StringWithWord(m.word)
 	}
 }
 
@@ -126,7 +126,7 @@ func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNo
 
 	wordFindResult := trie.Find(accumulation)
 	if wordFindResult.IsWord && len(accumulation) >= MIN_WORD_LENGTH {
-		word := Word{letters: []*WordLetter{}, Probability: probability}
+		word := Word{letters: []*WordLetter{}, Probability: probability, NumGreyNodes: 0, board: board}
 		numGreyNodes := 0
 		for idx, node := range accumulation {
 			if node.Color == None {
@@ -145,9 +145,24 @@ func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNo
 		return result
 	}
 
+	nextLetters := trie.NextLetters(accumulation)
+
 	neighbors := board.GetNeighbors(node.coords)
 	for _, neighbor := range neighbors {
+		// TODO: Don't run this if the neighbor is not in the list of next letters. Small improvement.
 		result = append(result, getWordsStartingAtNode(trie, board, mover, neighbor, accumulation, probability)...)
+
+		for _, nextLetter := range nextLetters {
+			swaps := board.FindSwaps(neighbor, node, nextLetter)
+			if len(swaps) > 0 {
+				fmt.Println("found swaps", neighbor.coords, nextLetter, len(swaps))
+			}
+			for _, nodeToSwap := range swaps {
+				clone := board.clone()
+				clone.SwapNodes(neighbor.coords, nodeToSwap.coords)
+				result = append(result, getWordsStartingAtNode(trie, clone, mover, board.Nodes[neighbor.coords[0]][neighbor.coords[1]], accumulation, probability)...)
+			}
+		}
 	}
 
 	return result

@@ -5,12 +5,12 @@ import (
 )
 
 const (
-	//ALBHABET_SIZE total characters in english alphabet
-	ALBHABET_SIZE = 26
+	//ALPHABET_SIZE total characters in english alphabet
+	ALPHABET_SIZE = 26
 )
 
 type trieNode struct {
-	childrens [ALBHABET_SIZE]*trieNode
+	children  [ALPHABET_SIZE]*trieNode
 	isWordEnd bool
 	isPrefix  bool
 }
@@ -40,10 +40,10 @@ func (t *Trie) insert(word string) {
 	current := t.root
 	for i := 0; i < wordLength; i++ {
 		index := word[i] - 'A'
-		if current.childrens[index] == nil {
-			current.childrens[index] = &trieNode{}
+		if current.children[index] == nil {
+			current.children[index] = &trieNode{}
 		}
-		current = current.childrens[index]
+		current = current.children[index]
 		if i < wordLength-1 {
 			current.isPrefix = true
 		}
@@ -65,14 +65,32 @@ func (t *Trie) Find(nodes []*BoardNode) FindResult {
 	current := t.root
 	for i := 0; i < wordLength; i++ {
 		index := nodes[i].Letter - 'A'
-		if current.childrens[index] == nil {
+		if current.children[index] == nil {
 			return result
 		}
-		current = current.childrens[index]
+		current = current.children[index]
 	}
 	result.IsPrefix = current.isPrefix
 	if current.isWordEnd {
 		result.IsWord = true
+	}
+	return result
+}
+
+func (t *Trie) NextLetters(prefix []*BoardNode) []byte {
+	result := []byte{}
+	current := t.root
+	for _, node := range prefix {
+		index := node.Letter - 'A'
+		if current.children[index] == nil {
+			return result
+		}
+		current = current.children[index]
+	}
+	for i := 0; i < ALPHABET_SIZE; i++ {
+		if current.children[i] != nil {
+			result = append(result, byte(i+'A'))
+		}
 	}
 	return result
 }

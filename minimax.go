@@ -49,18 +49,6 @@ func (m Mover) IsMatchingDrab(c Color) bool {
 func ExecuteMinimax(board *Board, trie *Trie) *Move {
 	bestResult := runMinimax(trie, board, BlueMover, 0.0, 1.0, DEPTH, []*Move{}, 1)
 
-	// Get swapped boards
-	// alpha := bestResult.score
-	// swappedBoards := board.GenerateSwaps(BlueMover)
-	// for _, swappedBoard := range swappedBoards {
-	// 	result := runMinimax(trie, swappedBoard, BlueMover, alpha, 1, DEPTH, []*Move{}, 1)
-	// 	if bestResult == nil || result.score > bestResult.score {
-	// 		fmt.Println("Found better result")
-	// 		bestResult = result
-	// 	}
-	// 	alpha = max(alpha, bestResult.score)
-	// }
-
 	fmt.Println("Best result:", bestResult.String())
 
 	return bestResult.moves[0]
@@ -94,7 +82,7 @@ func runMinimax(trie *Trie, board *Board, mover Mover, alpha float64, beta float
 		var best *MinimaxResult
 		for _, word := range words {
 			updatedBoard := board.Play(word, BlueMover)
-			result := runMinimax(trie, updatedBoard, RedMover, alpha, beta, depth-1, append(moves, &Move{word: word, board: board, Mover: mover}), probability*word.Probability)
+			result := runMinimax(trie, updatedBoard, RedMover, alpha, beta, depth-1, append(moves, &Move{word: word, Mover: mover}), probability*word.Probability)
 			if best == nil || result.score > best.score {
 				best = result
 			}
@@ -108,7 +96,7 @@ func runMinimax(trie *Trie, board *Board, mover Mover, alpha float64, beta float
 		var best *MinimaxResult
 		for _, word := range words {
 			updatedBoard := board.Play(word, RedMover)
-			result := runMinimax(trie, updatedBoard, BlueMover, alpha, beta, depth-1, append(moves, &Move{word: word, board: board, Mover: mover}), probability*word.Probability)
+			result := runMinimax(trie, updatedBoard, BlueMover, alpha, beta, depth-1, append(moves, &Move{word: word, Mover: mover}), probability*word.Probability)
 			if best == nil || (result.score < best.score && result.score != -1) {
 				best = result
 			}
