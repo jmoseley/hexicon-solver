@@ -7,7 +7,7 @@ import (
 )
 
 type WordLetter struct {
-	coords  []int
+	coords  Coords
 	Letter  byte
 	IsStart bool
 }
@@ -16,6 +16,7 @@ type Word struct {
 	letters      []*WordLetter
 	Probability  float64
 	NumGreyNodes int
+	SwappedNodes []Coords
 	board        *Board
 }
 
@@ -44,18 +45,18 @@ func (w *Word) String() string {
 	return b.String()
 }
 
-func (w *Word) Has(coords []int) bool {
+func (w *Word) Has(coords Coords) bool {
 	for _, letter := range w.letters {
-		if letter.coords[0] == coords[0] && letter.coords[1] == coords[1] {
+		if letter.coords.Line == coords.Line && letter.coords.Col == coords.Col {
 			return true
 		}
 	}
 	return false
 }
 
-func (w *Word) Get(coords []int) *WordLetter {
+func (w *Word) Get(coords Coords) *WordLetter {
 	for _, letter := range w.letters {
-		if letter.coords[0] == coords[0] && letter.coords[1] == coords[1] {
+		if letter.coords.Line == coords.Line && letter.coords.Col == coords.Col {
 			return letter
 		}
 	}
@@ -73,7 +74,7 @@ func FindWords(board *Board, trie *Trie, mover Mover) []*Word {
 				continue
 			}
 
-			result = append(result, getWordsStartingAtNode(trie, board, mover, node, accumulation, 1.0)...)
+			result = append(result, findWordsRecursive(trie, board, mover, node, accumulation, 1.0, []Coords{})...)
 		}
 	}
 
@@ -125,7 +126,7 @@ func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNo
 
 	accumulatedNode := &AccumulatedNode{
 		Letter: node.Letter,
-		coords: []int{node.coords[0], node.coords[1]},
+		coords: node.coords,
 		Color:  node.Color,
 	}
 	accumulation = append(accumulation, accumulatedNode)

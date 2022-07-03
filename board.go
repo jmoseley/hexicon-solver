@@ -31,17 +31,20 @@ type BoardNode struct {
 	Color     Color  `json:"color"`
 	cleared   bool
 	used      bool
-	coords    []int
+	coords    Coords
 	IsSwapped bool
 }
 
 type Board struct {
-	Score       BoardScore     `json:"score"`
-	Nodes       [][]*BoardNode `json:"nodes"`
-	probability float64
-	neighbors   [][][]*BoardNode
-	nodesList   []*BoardNode
-	hasSwapped  bool
+	Score     BoardScore     `json:"score"`
+	Nodes     [][]*BoardNode `json:"nodes"`
+	neighbors [][][]*BoardNode
+	nodesList []*BoardNode
+}
+
+type Coords struct {
+	Line int
+	Col  int
 }
 
 func (b *Board) Initialize() {
@@ -49,7 +52,7 @@ func (b *Board) Initialize() {
 	// Set the node coordinates
 	for lineNum := 0; lineNum < len(b.Nodes); lineNum++ {
 		for nodeNum := 0; nodeNum < len(b.Nodes[lineNum]); nodeNum++ {
-			b.Nodes[lineNum][nodeNum].coords = []int{lineNum, nodeNum}
+			b.Nodes[lineNum][nodeNum].coords = Coords{Line: lineNum, Col: nodeNum}
 			b.Nodes[lineNum][nodeNum].used = false
 			b.Nodes[lineNum][nodeNum].cleared = false
 		}
@@ -60,7 +63,7 @@ func (b *Board) Play(word *Word, mover Mover) *Board {
 	// fmt.Println("Playing", word, "as", mover, "Red", b.Score.Red, "Blue", b.Score.Blue)
 	board := b.clone()
 	for _, letter := range word.letters {
-		node := board.Nodes[letter.coords[0]][letter.coords[1]]
+		node := b.Nodes[letter.coords.Line][letter.coords.Col]
 		if node.Color == None {
 			node.Color = mover.GetColor()
 		} else if !mover.IsMatching(node.Color) {
@@ -126,7 +129,7 @@ func (b *Board) GetNeighbors(nodeCoord []int) []*BoardNode {
 		b.neighbors[nodeCoord[0]][nodeCoord[1]] = neighbors
 		return neighbors
 	} else {
-		return b.neighbors[nodeCoord[0]][nodeCoord[1]]
+		neighbors = b.neighbors[node.coords.Line][node.coords.Col]
 	}
 }
 
@@ -229,7 +232,7 @@ func (b *Board) clone() *Board {
 				Color:   b.Nodes[lineNum][nodeNum].Color,
 				cleared: b.Nodes[lineNum][nodeNum].cleared,
 				used:    b.Nodes[lineNum][nodeNum].used,
-				coords:  []int{lineNum, nodeNum},
+				coords:  Coords{Line: lineNum, Col: nodeNum},
 			}
 		}
 	}
@@ -274,62 +277,55 @@ func (n *BoardNode) clearSuperHexagon(board *Board) {
 	n.Color = None
 	n.cleared = true
 
-	neighbors := board.GetNeighbors(n.coords)
+	neighbors := board.GetNeighbors(n)
 	for _, neighbor := range neighbors {
 		neighbor.Color = None
 		neighbor.cleared = true
 	}
 }
 
-func (b *Board) GenerateSwaps(mover Mover) []*Board {
-	swaps := []*Board{}
-	hasSwapped := map[string]bool{}
-	for lineNum := 0; lineNum < len(b.Nodes); lineNum++ {
-		for nodeNum := 0; nodeNum < len(b.Nodes[lineNum]); nodeNum++ {
-			node := b.Nodes[lineNum][nodeNum]
-			if !mover.IsMatching(node.Color) {
-				continue
-			}
-			for _, neighbor := range b.GetNeighbors(node.coords) {
-				if mover.IsMatchingDrab(neighbor.Color) && hasSwapped[fmt.Sprint(node.coords, neighbor.coords)] == false && hasSwapped[fmt.Sprint(neighbor.coords, node.coords)] == false {
-					swaps = append(swaps, b.clone())
-					swaps[len(swaps)-1].SwapNodes(node.coords, neighbor.coords)
-					hasSwapped[fmt.Sprint(node.coords, neighbor.coords)] = true
-				}
-			}
-		}
+// func (b *Board) GenerateSwaps(mover Mover) []*Board {
+// 	swaps := []*Board{}
+// 	hasSwapped := map[string]bool{}
+// 	for lineNum := 0; lineNum < len(b.Nodes); lineNum++ {
+// 		for nodeNum := 0; nodeNum < len(b.Nodes[lineNum]); nodeNum++ {
+// 			node := b.Nodes[lineNum][nodeNum]
+// 			if !mover.IsMatching(node.Color) {
+// 				continue
+// 			}
+// 			for _, neighbor := range b.GetNeighbors(node) {
+// 				if mover.IsMatchingDrab(neighbor.Color) && hasSwapped[fmt.Sprint(node.coords, neighbor.coords)] == false && hasSwapped[fmt.Sprint(neighbor.coords, node.coords)] == false {
+// 					swaps = append(swaps, b.clone())
+// 					swaps[len(swaps)-1].SwapNodes(node.coords, neighbor.coords, false)
+// 					hasSwapped[fmt.Sprint(node.coords, neighbor.coords)] = true
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return swaps
+// }
+
+func (b *Board) SwapNodes(node1Coords, node2Coords Coords, backSwap bool) {
+	node1 := b.Nodes[node1Coords.Line][node1Coords.Col]
+	node2 := b.Nodes[node2Coords.Line][node2Coords.Col]
+	if node1.used || node2.used {
+		log.Fatalln("Cannot swap nodes that have already been used")
 	}
-	return swaps
-}
-
-func (b *Board) SwapNodes(node1Coords, node2Coords []int) {
-	node1 := b.Nodes[node1Coords[0]][node1Coords[1]]
-	node2 := b.Nodes[node2Coords[0]][node2Coords[1]]
-	b.Nodes[node1Coords[0]][node1Coords[1]] = node2
-	b.Nodes[node2Coords[0]][node2Coords[1]] = node1
-	node1.IsSwapped = true
-	node2.IsSwapped = true
-
-	copy(node1.coords, node2Coords)
-	copy(node2.coords, node1Coords)
-}
-
-func (b *Board) FindSwaps(node *BoardNode, ignore *BoardNode, desiredLetter byte) []*BoardNode {
-	result := []*BoardNode{}
-	if node.used || node.Color == VeryBlue || node.Color == VeryRed {
-		return result
+	b.Nodes[node1Coords.Line][node1Coords.Col] = node2
+	b.Nodes[node2Coords.Line][node2Coords.Col] = node1
+	if !backSwap {
+		node1.IsSwapped = true
+		node2.IsSwapped = true
+	} else {
+		node1.IsSwapped = false
+		node2.IsSwapped = false
 	}
 
-	for _, neighbor := range b.GetNeighbors(node.coords) {
-		if neighbor.used || neighbor.Color == VeryBlue || neighbor.Color == VeryRed || neighbor.coords[0] == ignore.coords[0] && neighbor.coords[1] == ignore.coords[1] {
-			continue
-		}
-		if neighbor.Letter == desiredLetter {
-			result = append(result, neighbor)
-		}
-	}
+	node1.coords = node2Coords
+	node2.coords = node1Coords
 
-	return result
+	node1.neighbors = nil
+	node2.neighbors = nil
 }
 
 func (b *Board) String() string {
