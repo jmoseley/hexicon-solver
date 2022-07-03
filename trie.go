@@ -56,7 +56,7 @@ type FindResult struct {
 	IsPrefix bool
 }
 
-func (t *Trie) Find(nodes []*BoardNode) FindResult {
+func (t *Trie) Find(nodes []*AccumulatedNode) FindResult {
 	result := FindResult{
 		IsWord:   false,
 		IsPrefix: false,
@@ -77,7 +77,7 @@ func (t *Trie) Find(nodes []*BoardNode) FindResult {
 	return result
 }
 
-func (t *Trie) NextLetters(prefix []*BoardNode) []byte {
+func (t *Trie) NextLetters(prefix []*AccumulatedNode) []byte {
 	result := []byte{}
 	current := t.root
 	for _, node := range prefix {

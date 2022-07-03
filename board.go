@@ -41,6 +41,7 @@ type Board struct {
 	probability float64
 	neighbors   [][][]*BoardNode
 	nodesList   []*BoardNode
+	hasSwapped  bool
 }
 
 func (b *Board) Initialize() {
@@ -309,8 +310,8 @@ func (b *Board) SwapNodes(node1Coords, node2Coords []int) {
 	node1.IsSwapped = true
 	node2.IsSwapped = true
 
-	node1.coords = node2Coords
-	node2.coords = node1Coords
+	copy(node1.coords, node2Coords)
+	copy(node2.coords, node1Coords)
 }
 
 func (b *Board) FindSwaps(node *BoardNode, ignore *BoardNode, desiredLetter byte) []*BoardNode {
