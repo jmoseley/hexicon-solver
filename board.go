@@ -161,28 +161,27 @@ func (b *Board) heuristic(mover Mover) float64 {
 	var closenessToLosing float64
 	closenessToWinning = float64(b.Score.Blue) / 16.0
 	closenessToLosing = 1 - (float64(b.Score.Red) / 16.0)
-	numBlueSquares := 0
-	numRedSquares := 0
+	numBlueSquareNeighbors := 0
+	numRedSquareNeighbors := 0
+	numNeighbors := 0
 	for lineNum := 0; lineNum < len(b.Nodes); lineNum++ {
 		for nodeNum := 0; nodeNum < len(b.Nodes[lineNum]); nodeNum++ {
-			node := b.Nodes[lineNum][nodeNum]
-			if node.Color == Red || node.Color == VeryRed {
-				numRedSquares++
-			} else if node.Color == Blue || node.Color == VeryBlue {
-				numBlueSquares++
+			neighbors := b.GetNeighbors(b.Nodes[lineNum][nodeNum])
+			for _, neighbor := range neighbors {
+				numNeighbors++
+				if neighbor.Color == Red || neighbor.Color == VeryRed {
+					numRedSquareNeighbors++
+				} else if neighbor.Color == Blue || neighbor.Color == VeryBlue {
+					numBlueSquareNeighbors++
+				}
 			}
 		}
 	}
 
-	blueSquareRatio := float64(numBlueSquares) / float64(NUM_SQUARES)
-	redSquareRatio := float64(numRedSquares) / float64(NUM_SQUARES)
+	blueSquareNeighborRatio := float64(numBlueSquareNeighbors) / float64(numNeighbors)
+	redSquareNeighborRatio := 1 - (float64(numRedSquareNeighbors) / float64(numNeighbors))
 
-	var goodSquareRatio float64
-	var badSquareRatio float64
-	goodSquareRatio = blueSquareRatio
-	badSquareRatio = 1 - redSquareRatio
-
-	result := closenessToWinning*.9 + closenessToLosing*.02 + goodSquareRatio*.05 + badSquareRatio*.03
+	result := closenessToWinning*.7 + closenessToLosing*.05 + blueSquareNeighborRatio*.2 + redSquareNeighborRatio*.05
 
 	// fmt.Println(b.String())
 	// fmt.Println("Blue", blueSquareRatio, "Red", redSquareRatio)
