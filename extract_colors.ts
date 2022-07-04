@@ -79,12 +79,19 @@ const COLOR_VALUES: [number, Color, number][] = [
   [5598, "blue", 30],
 ];
 
+const dynamicColors: Record<number, Color> = {};
+
 function isWithin(value: number, target: number, tolerance: number) {
   return value >= target - tolerance && value <= target + tolerance;
 }
 
-export async function extractHexColor(filename: string): Promise<Color[]> {
+export async function extractHexColor(
+  filename: string,
+  lettersBoard: string[][]
+): Promise<Color[]> {
   const results = [] as Color[];
+
+  const letters = lettersBoard.flat();
 
   for (const [idx, coords] of COORDINATES.entries()) {
     const imageData = await sharp(filename)
@@ -109,23 +116,38 @@ export async function extractHexColor(filename: string): Promise<Color[]> {
       results.push(color[1]);
       continue;
     } else {
+      const dynamicColor = dynamicColors[total];
+      if (dynamicColor) {
+        if (debug.enabled) {
+          debug(
+            `Using previously questioned color for character ${letters[idx]} at position ${idx}: ${dynamicColor}`
+          );
+        }
+        results.push(dynamicColor);
+        continue;
+      }
       const newColor = await question(
-        `What color is character ${idx + 1} ${total}? `
+        `What color is character ${letters[idx]} at position ${
+          idx + 1
+        } (${total})? `
       );
 
+      let newColorAsColor: Color;
       if (newColor === "none" || newColor === "" || newColor === "grey") {
-        results.push("none");
+        newColorAsColor = "none";
       } else if (
         newColor === "red" ||
         newColor === "blue" ||
         newColor === "very_red" ||
         newColor === "very_blue"
       ) {
-        results.push(newColor);
+        newColorAsColor = newColor;
       } else {
         console.error(`Unknown color ${newColor}`);
         process.exit(1);
       }
+      dynamicColors[total] = newColorAsColor;
+      results.push(newColorAsColor);
     }
   }
 

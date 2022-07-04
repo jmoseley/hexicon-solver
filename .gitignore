@@ -3,3 +3,7 @@ eng.traineddata
 *.js
 yarn-error.log
 sample-cropped.png
+parsed_board.json
+cpu.prof
+mem.prof
+prof.png

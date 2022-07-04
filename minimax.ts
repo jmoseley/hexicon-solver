@@ -19,10 +19,10 @@ class StatusTracker {
   private currentDepth: number = 0;
   private movesRemaining: number = 0;
 
-  private statusLine: ReturnType<typeof console.draft>;
+  // private statusLine: ReturnType<typeof console.draft>;
 
   constructor() {
-    this.statusLine = console.draft("Minimax initializing....");
+    // this.statusLine = console.draft("Minimax initializing....");
   }
 
   addMovesRemaining(numMoves: number) {
@@ -60,18 +60,18 @@ class StatusTracker {
   }
 
   draw() {
-    const avgTimePerBoard = Math.round(this.analysisTime / this.boardsAnalyzed);
-    this.statusLine(
-      `Moves Remaining: ${
-        this.movesRemaining
-      } Avg ms/Board: ${avgTimePerBoard} Depth: ${
-        this.currentDepth
-      } Max Depth: ${this.maxDepth} ${
-        this.bestMove
-          ? ` Minimax best move: ${this.bestMove?.word.toString()}`
-          : ""
-      }`
-    );
+    // const avgTimePerBoard = Math.round(this.analysisTime / this.boardsAnalyzed);
+    // this.statusLine(
+    //   `Moves Remaining: ${
+    //     this.movesRemaining
+    //   } Avg ms/Board: ${avgTimePerBoard} Depth: ${
+    //     this.currentDepth
+    //   } Max Depth: ${this.maxDepth} ${
+    //     this.bestMove
+    //       ? ` Minimax best move: ${this.bestMove?.word.toString()}`
+    //       : ""
+    //   }`
+    // );
   }
 }
 
@@ -82,11 +82,17 @@ export function miniMax(board: Board, dictionary: Trie) {
   const startTime = performance.now();
   const moves = findAllWords(board, dictionary, "blue")
     .filter((s) => s.word.length > 5)
-    .sort(sortByHexagonCount("blue"));
+    .sort(sortByHexagonCount("blue"))
+    .slice(0, 100);
   statusTracker.boardAnalyzed(performance.now() - startTime);
 
-  const maxDepth = Math.min(16 - board.blueScore + 1, 3);
+  const maxDepth = Math.min(16 - board.blueScore + 1, 2);
   debug("maxDepth", maxDepth);
+
+  debug(
+    "top level moves",
+    moves.map((s) => s.word.toString())
+  );
 
   let alpha = -Infinity;
   let best = -Infinity;
@@ -108,6 +114,7 @@ export function miniMax(board: Board, dictionary: Trie) {
         bestMove: move,
         bestScore: score,
       });
+      debug("best move", move.word.toString());
     }
     alpha = Math.max(alpha, best);
     debug("Top level", best, alpha);
