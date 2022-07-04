@@ -6,8 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -28,10 +26,6 @@ func main() {
 			log.Fatal("could not start CPU profile: ", err)
 		}
 		defer pprof.StopCPUProfile()
-	} else {
-		go func() {
-			http.ListenAndServe("localhost:6060", nil)
-		}()
 	}
 
 	board := &Board{}

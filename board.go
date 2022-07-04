@@ -366,13 +366,10 @@ func (b *Board) StringWithWord(word *Word) string {
 	for idx, node := range b.nodesFlat() {
 		var letter string
 		printColor := color.New(color.FgWhite)
-		isSwapped := false
+		isSwapped := word != nil && len(word.SwappedNodes) > 0 && (word.SwappedNodes[0] == node.coords || word.SwappedNodes[1] == node.coords)
 		if word != nil && word.Has(node.coords) {
 			wordLetter := word.Get(node.coords)
 			letter = string(wordLetter.Letter)
-			if len(word.SwappedNodes) > 0 && (word.SwappedNodes[0] == node.coords || word.SwappedNodes[1] == node.coords) {
-				isSwapped = true
-			}
 			if wordLetter.IsStart {
 				if isSwapped {
 					printColor = color.New(color.FgBlack, color.BgHiGreen)
