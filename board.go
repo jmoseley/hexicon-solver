@@ -145,7 +145,7 @@ func (b *Board) GetTerminalResult() float64 {
 const NUM_SQUARES = 61
 
 // between 0 and 1
-func (b *Board) heuristic(mover Mover) float64 {
+func (b *Board) heuristic() float64 {
 	var closenessToWinning float64
 	var closenessToLosing float64
 	closenessToWinning = float64(b.Score.Blue) / 16.0
@@ -170,7 +170,7 @@ func (b *Board) heuristic(mover Mover) float64 {
 	blueSquareNeighborRatio := float64(numBlueSquareNeighbors) / float64(numNeighbors)
 	redSquareNeighborRatio := 1 - (float64(numRedSquareNeighbors) / float64(numNeighbors))
 
-	result := closenessToWinning*.7 + closenessToLosing*.05 + blueSquareNeighborRatio*.2 + redSquareNeighborRatio*.05
+	result := closenessToWinning*.6 + closenessToLosing*.15 + blueSquareNeighborRatio*.2 + redSquareNeighborRatio*.05
 
 	// fmt.Println(b.String())
 	// fmt.Println("Blue", blueSquareRatio, "Red", redSquareRatio)
@@ -366,18 +366,17 @@ func (b *Board) StringWithWord(word *Word) string {
 	for idx, node := range b.nodesFlat() {
 		var letter string
 		printColor := color.New(color.FgWhite)
-		isSwapped := word != nil && len(word.SwappedNodes) > 0 && (word.SwappedNodes[0] == node.coords || word.SwappedNodes[1] == node.coords)
 		if word != nil && word.Has(node.coords) {
 			wordLetter := word.Get(node.coords)
 			letter = string(wordLetter.Letter)
 			if wordLetter.IsStart {
-				if isSwapped {
+				if node.IsSwapped {
 					printColor = color.New(color.FgBlack, color.BgHiGreen)
 				} else {
 					printColor = color.New(color.FgHiGreen)
 				}
 			} else {
-				if isSwapped {
+				if node.IsSwapped {
 					printColor = color.New(color.FgBlack, color.BgGreen)
 				} else {
 					printColor = color.New(color.FgGreen)
@@ -396,13 +395,13 @@ func (b *Board) StringWithWord(word *Word) string {
 			}
 			// TODO: There is no way to have a swapped node that is not part of the word right now
 			// but that would be a good improvement to the algorithm.
-			// if node.IsSwapped {
-			// 	if node.Color == None {
-			// 		printColor = color.New(color.FgBlack, color.BgWhite)
-			// 	} else {
-			// 		printColor = printColor.Add(color.BgWhite)
-			// 	}
-			// }
+			if node.IsSwapped {
+				if node.Color == None {
+					printColor = color.New(color.FgBlack, color.BgWhite)
+				} else {
+					printColor = printColor.Add(color.BgWhite)
+				}
+			}
 		}
 		fmt.Fprintf(&builder, "%s%s", chunks[idx], printColor.Sprintf(letter))
 	}

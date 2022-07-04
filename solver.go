@@ -57,7 +57,7 @@ func main() {
 		board.SwapNodes(result.word.SwappedNodes[0], result.word.SwappedNodes[1], false)
 	}
 	// Print the result
-	fmt.Println(result.String(board))
+	fmt.Println(result.String(nil))
 
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)

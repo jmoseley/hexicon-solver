@@ -49,7 +49,7 @@ func (m Mover) IsMatchingDrab(c Color) bool {
 func ExecuteMinimax(board *Board, trie *Trie) *Move {
 	bestResult := runMinimax(trie, board, BlueMover, 0.0, 1.0, DEPTH, []*Move{}, 1)
 
-	fmt.Println("Best result:", bestResult.String())
+	// fmt.Println("Best result:", bestResult.String())
 
 	return bestResult.moves[0]
 }
@@ -70,7 +70,7 @@ func runMinimax(trie *Trie, board *Board, mover Mover, alpha float64, beta float
 		return &MinimaxResult{score: float64(terminalResult) * probability, moves: moves, probability: probability}
 	}
 	if depth == 0 {
-		return &MinimaxResult{score: board.heuristic(mover) * probability, moves: moves, probability: probability}
+		return &MinimaxResult{score: board.heuristic() * probability, moves: moves, probability: probability}
 	}
 
 	words := FindWords(board, trie, mover)
@@ -82,7 +82,7 @@ func runMinimax(trie *Trie, board *Board, mover Mover, alpha float64, beta float
 		var best *MinimaxResult
 		for _, word := range words {
 			result := runMinimax(trie, word.board, RedMover, alpha, beta, depth-1, append(moves, &Move{word: word, Mover: mover}), probability*word.Probability)
-			if best == nil || result.score > best.score {
+			if best == nil || (result.score > best.score && result.score != -1) {
 				best = result
 			}
 			if best.score >= beta {
