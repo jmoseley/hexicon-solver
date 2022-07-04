@@ -6,6 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -26,11 +28,15 @@ func main() {
 			log.Fatal("could not start CPU profile: ", err)
 		}
 		defer pprof.StopCPUProfile()
+	} else {
+		go func() {
+			http.ListenAndServe("localhost:6060", nil)
+		}()
 	}
 
-	var board Board
+	board := &Board{}
 
-	err := json.NewDecoder(os.Stdin).Decode(&board)
+	err := json.NewDecoder(os.Stdin).Decode(board)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,10 +57,13 @@ func main() {
 	// Instantiate the trie
 	trie := CreateTrie(words)
 
-	result := ExecuteMinimax(&board, trie)
+	result := ExecuteMinimax(board, trie)
 
+	if len(result.word.SwappedNodes) > 0 {
+		board.SwapNodes(result.word.SwappedNodes[0], result.word.SwappedNodes[1], false)
+	}
 	// Print the result
-	fmt.Println(result.String())
+	fmt.Println(result.String(board))
 
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)

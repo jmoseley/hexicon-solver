@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -52,14 +53,25 @@ func (t *Trie) insert(word string) {
 }
 
 type FindResult struct {
-	IsWord   bool
-	IsPrefix bool
+	IsWord      bool
+	IsPrefix    bool
+	NextLetters map[byte]bool
+}
+
+func (fr FindResult) String() string {
+	var b strings.Builder
+	b.Grow(len(fr.NextLetters))
+	for letter := range fr.NextLetters {
+		b.WriteByte(letter)
+	}
+	return fmt.Sprintf("IsWord: %t IsPrefix: %t NextLetters: %s", fr.IsWord, fr.IsPrefix, b.String())
 }
 
 func (t *Trie) Find(nodes []*AccumulatedNode) FindResult {
 	result := FindResult{
-		IsWord:   false,
-		IsPrefix: false,
+		IsWord:      false,
+		IsPrefix:    false,
+		NextLetters: make(map[byte]bool, ALPHABET_SIZE),
 	}
 	wordLength := len(nodes)
 	current := t.root
@@ -74,22 +86,11 @@ func (t *Trie) Find(nodes []*AccumulatedNode) FindResult {
 	if current.isWordEnd {
 		result.IsWord = true
 	}
-	return result
-}
-
-func (t *Trie) NextLetters(prefix []*AccumulatedNode) []byte {
-	result := []byte{}
-	current := t.root
-	for _, node := range prefix {
-		index := node.Letter - 'A'
-		if current.children[index] == nil {
-			return result
-		}
-		current = current.children[index]
-	}
-	for i := 0; i < ALPHABET_SIZE; i++ {
-		if current.children[i] != nil {
-			result = append(result, byte(i+'A'))
+	if result.IsPrefix {
+		for i := 0; i < ALPHABET_SIZE; i++ {
+			if current.children[i] != nil {
+				result.NextLetters[byte(i+'A')] = true
+			}
 		}
 	}
 	return result

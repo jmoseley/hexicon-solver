@@ -25,11 +25,14 @@ type Move struct {
 	Mover Mover
 }
 
-func (m *Move) String() string {
-	if m.word.board == nil {
+func (m *Move) String(board *Board) string {
+	if board == nil {
+		board = m.word.board
+	}
+	if board == nil {
 		return m.word.String()
 	} else {
-		return m.word.board.StringWithWord(m.word)
+		return board.StringWithWord(m.word)
 	}
 }
 
@@ -43,6 +46,10 @@ func (w *Word) String() string {
 		fmt.Fprintf(&b, "%c", letter.Letter)
 	}
 	return b.String()
+}
+
+func (wl *WordLetter) String() string {
+	return fmt.Sprintf("%v %c", wl.coords, wl.Letter)
 }
 
 func (w *Word) Has(coords Coords) bool {
@@ -95,26 +102,33 @@ var lettersArray = []byte{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K',
 
 type AccumulatedNode struct {
 	Letter byte
-	coords []int
+	coords Coords
 	Color  Color
 }
 
-func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNode, accumulation []*AccumulatedNode, probability float64) []*Word {
+func (a *AccumulatedNode) String() string {
+	return fmt.Sprintf("%c {%d %d}", a.Letter, a.coords.Line, a.coords.Col)
+}
+
+func findWordsRecursive(trie *Trie, board *Board, mover Mover, node *BoardNode, accumulation []*AccumulatedNode, probability float64, swappedNodes []Coords) []*Word {
 	result := []*Word{}
 	if probability < 0.01 {
 		return result
 	}
 
+	// Just skip any nodes that have been cleared, since 1/26 is really low and not worth it.
+	// TODO: Enable this for monte carlo simulations.
 	if node.cleared {
-		originalLetter := node.Letter
-		for _, letter := range lettersArray {
-			node.Letter = letter
-			node.cleared = false
-			result = append(result, getWordsStartingAtNode(trie, board, mover, node, accumulation, probability/26)...)
-		}
-		node.Letter = originalLetter
-		node.cleared = true
 		return result
+		// originalLetter := node.Letter
+		// for _, letter := range lettersArray {
+		// 	node.Letter = letter
+		// 	node.cleared = false
+		// 	result = append(result, findWordsRecursive(trie, board, mover, node, accumulation, probability/26)...)
+		// }
+		// node.Letter = originalLetter
+		// node.cleared = true
+		// return result
 	}
 
 	if node.used {
@@ -138,46 +152,54 @@ func getWordsStartingAtNode(trie *Trie, board *Board, mover Mover, node *BoardNo
 
 	wordFindResult := trie.Find(accumulation)
 	if wordFindResult.IsWord && len(accumulation) >= MIN_WORD_LENGTH {
-		word := Word{letters: []*WordLetter{}, Probability: probability, NumGreyNodes: 0, board: board}
+		playedBoard := board.clone()
+		word := Word{letters: make([]*WordLetter, 0, len(accumulation)), Probability: probability, board: playedBoard, SwappedNodes: swappedNodes}
 		numGreyNodes := 0
 		for idx, node := range accumulation {
 			if node.Color == None {
 				numGreyNodes++
 			}
-			coords := make([]int, 2)
-			copy(coords, node.coords)
-			if idx == 0 {
-				word.letters = append(word.letters, &WordLetter{coords: coords, Letter: node.Letter, IsStart: true})
-			} else {
-				word.letters = append(word.letters, &WordLetter{coords: coords, Letter: node.Letter})
-			}
+			word.letters = append(word.letters, &WordLetter{coords: node.coords, Letter: node.Letter, IsStart: idx == 0})
 		}
 		word.NumGreyNodes = numGreyNodes
+		playedBoard.Play(&word, mover)
+
 		result = append(result, &word)
 	}
 	if !wordFindResult.IsPrefix {
 		return result
 	}
 
-	nextLetters := trie.NextLetters(accumulation)
-
-	neighbors := board.GetNeighbors(node.coords)
+	neighbors := board.GetNeighbors(node)
 	for _, neighbor := range neighbors {
-		// TODO: Don't run this if the neighbor is not in the list of next letters. Small improvement.
-		result = append(result, getWordsStartingAtNode(trie, board, mover, neighbor, accumulation, probability)...)
+		result = append(result, findWordsRecursive(trie, board, mover, neighbor, accumulation, probability, swappedNodes)...)
 
-		if !board.hasSwapped {
-			for _, nextLetter := range nextLetters {
-				swaps := board.FindSwaps(neighbor, node, nextLetter)
-				if len(swaps) > 0 {
-					fmt.Println("found swaps", neighbor.coords, nextLetter, len(swaps), board.String())
+		if neighbor.used || neighbor.Color == VeryBlue || neighbor.Color == VeryRed {
+			continue
+		}
+
+		coords := neighbor.coords
+
+		if !board.HasSwapped {
+			neighborNeighbors := board.GetNeighbors(neighbor)
+			for _, neighborNeighbor := range neighborNeighbors {
+				// neighborNeighbor.used ensures that we won't continue with the current node
+				if neighborNeighbor.used || neighborNeighbor.cleared || neighborNeighbor.Color != None {
+					continue
 				}
-				for _, nodeToSwap := range swaps {
-					clone := board.clone()
-					clone.SwapNodes(neighbor.coords, nodeToSwap.coords)
-					clone.hasSwapped = true
-					fmt.Println("swapped board", clone.String())
-					result = append(result, getWordsStartingAtNode(trie, clone, mover, clone.Nodes[neighbor.coords[0]][neighbor.coords[1]], accumulation, probability)...)
+
+				for nextLetter := range wordFindResult.NextLetters {
+					if neighbor.Letter != nextLetter {
+						continue
+					}
+
+					swappedNodes = append(swappedNodes, coords, neighborNeighbor.coords)
+
+					board.SwapNodes(neighbor.coords, neighborNeighbor.coords, false)
+					result = append(result, findWordsRecursive(trie, board, mover, board.Nodes[coords.Line][coords.Col], accumulation, probability, swappedNodes)...)
+					board.SwapNodes(neighborNeighbor.coords, neighbor.coords, true)
+
+					swappedNodes = swappedNodes[:0]
 				}
 			}
 		}
