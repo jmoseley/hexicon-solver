@@ -11,9 +11,10 @@ const (
 )
 
 type trieNode struct {
-	children  [ALPHABET_SIZE]*trieNode
-	isWordEnd bool
-	isPrefix  bool
+	children    [ALPHABET_SIZE]*trieNode
+	isWordEnd   bool
+	isPrefix    bool
+	nextLetters map[byte]bool
 }
 
 type Trie struct {
@@ -44,6 +45,10 @@ func (t *Trie) insert(word string) {
 		if current.children[index] == nil {
 			current.children[index] = &trieNode{}
 		}
+		if current.nextLetters == nil {
+			current.nextLetters = make(map[byte]bool, ALPHABET_SIZE)
+		}
+		current.nextLetters[word[i]] = true
 		current = current.children[index]
 		if i < wordLength-1 {
 			current.isPrefix = true
@@ -87,11 +92,7 @@ func (t *Trie) Find(nodes []*AccumulatedNode) FindResult {
 		result.IsWord = true
 	}
 	if result.IsPrefix {
-		for i := 0; i < ALPHABET_SIZE; i++ {
-			if current.children[i] != nil {
-				result.NextLetters[byte(i+'A')] = true
-			}
-		}
+		result.NextLetters = current.nextLetters
 	}
 	return result
 }

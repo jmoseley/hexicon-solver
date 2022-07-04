@@ -123,21 +123,10 @@ func (b *Board) GetNeighbors(node *BoardNode) []*BoardNode {
 		return node.neighbors
 	}
 	neighbors := make([]*BoardNode, 0, 6)
-	if b.neighbors == nil {
-		b.neighbors = make([][][]*BoardNode, len(b.Nodes))
-	}
-	if b.neighbors[node.coords.Line] == nil {
-		b.neighbors[node.coords.Line] = make([][]*BoardNode, len(b.Nodes[node.coords.Line]))
-	}
-	if b.neighbors[node.coords.Line][node.coords.Col] == nil {
-		neighbor_coords := coords_to_neighbors[node.coords.Line][node.coords.Col]
+	neighbor_coords := coords_to_neighbors[node.coords.Line][node.coords.Col]
 
-		for _, coord := range neighbor_coords {
-			neighbors = append(neighbors, b.Nodes[coord[0]][coord[1]])
-		}
-		b.neighbors[node.coords.Line][node.coords.Col] = neighbors
-	} else {
-		neighbors = b.neighbors[node.coords.Line][node.coords.Col]
+	for _, coord := range neighbor_coords {
+		neighbors = append(neighbors, b.Nodes[coord[0]][coord[1]])
 	}
 	node.neighbors = neighbors
 	return neighbors
